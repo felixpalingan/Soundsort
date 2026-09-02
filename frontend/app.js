@@ -66,6 +66,8 @@ const elements = {
   deckPlayerTitle: document.getElementById('deckPlayerTitle'),
   deckPlayerArtist: document.getElementById('deckPlayerArtist'),
   btnPlayerPlayToggle: document.getElementById('btnPlayerPlayToggle'),
+  btnPlayerPrev: document.getElementById('btnPlayerPrev'),
+  btnPlayerNext: document.getElementById('btnPlayerNext'),
   playIconSvg: document.getElementById('playIconSvg'),
   waveformVisualizer: document.getElementById('waveformVisualizer'),
 
@@ -1210,6 +1212,28 @@ function toggleVinylPlayback() {
   }
 }
 
+function playPrevTrack() {
+  if (!state.tracks || state.tracks.length === 0) return;
+  if (!currentCuedTrack) {
+    cueTrackOnVinyl(state.tracks[0].id);
+    return;
+  }
+  const currentIndex = state.tracks.findIndex(t => t.id === currentCuedTrack.id);
+  const prevIndex = currentIndex > 0 ? currentIndex - 1 : state.tracks.length - 1;
+  cueTrackOnVinyl(state.tracks[prevIndex].id);
+}
+
+function playNextTrack() {
+  if (!state.tracks || state.tracks.length === 0) return;
+  if (!currentCuedTrack) {
+    cueTrackOnVinyl(state.tracks[0].id);
+    return;
+  }
+  const currentIndex = state.tracks.findIndex(t => t.id === currentCuedTrack.id);
+  const nextIndex = currentIndex < state.tracks.length - 1 ? currentIndex + 1 : 0;
+  cueTrackOnVinyl(state.tracks[nextIndex].id);
+}
+
 function renderGroupedGridView(container) {
   const groups = {};
   state.tracks.forEach(t => {
@@ -1566,121 +1590,343 @@ async function handleConnectYT() {
 }
 
 // -------------------------------------------------------------
+// Merge Subgenres Modal
+// -------------------------------------------------------------
+function openMergeModal() {
+  const select = elements.selectMergeSource;
+  const datalist = elements.existingSubgenresList;
+  if (!select) return;
+
+  select.innerHTML = '';
+  if (datalist) datalist.innerHTML = '';
+
+  const subs = state.allSubgenres.filter(s => s && s !== 'General' && s !== 'Uncategorized');
+  subs.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    select.appendChild(opt);
+
+    if (datalist) {
+      const dOpt = document.createElement('option');
+      dOpt.value = s;
+      datalist.appendChild(dOpt);
+    }
+  });
+
+  if (elements.inputMergeTarget) elements.inputMergeTarget.value = '';
+  openModal(elements.mergeModal);
+}
+
+async function handleConfirmMerge() {
+  const source = elements.selectMergeSource ? elements.selectMergeSource.value : '';
+  const target = elements.inputMergeTarget ? elements.inputMergeTarget.value.trim() : '';
+
+  if (!source || !target) {
+    showToast('Please select source and target sub-genres', 'error');
+    return;
+  }
+
+  if (source.toLowerCase() === target.toLowerCase()) {
+    showToast('Source and target cannot be identical', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/genres/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_subgenre: source, new_subgenre: target })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Merge failed');
+
+    closeModal(elements.mergeModal);
+    showToast(`Merged "${source}" into "${target}"!`, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// Custom Playlist Builder Modal
+// -------------------------------------------------------------
+function openCustomPlaylistModal() {
+  if (!elements.customPlaylistModal) return;
+
+  if (elements.inputCustomPlaylistTitle) {
+    elements.inputCustomPlaylistTitle.value = '';
+  }
+  if (elements.inputCustomVibeQuery) {
+    elements.inputCustomVibeQuery.value = '';
+  }
+
+  // Populate genres
+  if (elements.selectCustomMainGenre) {
+    elements.selectCustomMainGenre.innerHTML = '<option value="">All Main Genres</option>';
+    state.allMainGenres.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = g;
+      elements.selectCustomMainGenre.appendChild(opt);
+    });
+  }
+
+  if (elements.selectCustomSubGenre) {
+    elements.selectCustomSubGenre.innerHTML = '<option value="">All Sub-genres</option>';
+    state.allSubgenres.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s;
+      opt.textContent = s;
+      elements.selectCustomSubGenre.appendChild(opt);
+    });
+  }
+
+  updateCustomPlaylistPreview();
+  openModal(elements.customPlaylistModal);
+}
+
+function updateCustomPlaylistPreview() {
+  const mg = elements.selectCustomMainGenre ? elements.selectCustomMainGenre.value.toLowerCase() : '';
+  const sg = elements.selectCustomSubGenre ? elements.selectCustomSubGenre.value.toLowerCase() : '';
+  const vibe = elements.inputCustomVibeQuery ? elements.inputCustomVibeQuery.value.trim().toLowerCase() : '';
+
+  let matched = [...state.allTracks];
+  if (mg) {
+    matched = matched.filter(t => (t.main_genre || '').toLowerCase() === mg);
+  }
+  if (sg) {
+    matched = matched.filter(t => (t.sub_genre || '').toLowerCase() === sg);
+  }
+  if (vibe) {
+    matched = matched.filter(t => (t.vibe || '').toLowerCase().includes(vibe) || (t.sub_genre || '').toLowerCase().includes(vibe));
+  }
+
+  state._matchedCustomTracks = matched;
+
+  if (elements.customMatchedCount) {
+    elements.customMatchedCount.textContent = matched.length;
+  }
+
+  if (elements.customMatchedList) {
+    if (matched.length === 0) {
+      elements.customMatchedList.innerHTML = `<div style="text-align: center; color: var(--sleeve-text-muted); padding: 12px; font-size: 0.85rem;">No matching songs found with current filters</div>`;
+    } else {
+      elements.customMatchedList.innerHTML = matched.slice(0, 50).map((t, idx) => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--sleeve-border); font-size: 0.8rem;">
+          <div>
+            <strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}
+          </div>
+          <span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || '')}</span>
+        </div>
+      `).join('') + (matched.length > 50 ? `<div style="text-align: center; color: var(--sleeve-text-muted); padding-top: 6px; font-size: 0.75rem;">+ ${matched.length - 50} more matching tracks</div>` : '');
+    }
+  }
+}
+
+async function handleCreateCustomPlaylist() {
+  const title = elements.inputCustomPlaylistTitle ? elements.inputCustomPlaylistTitle.value.trim() : '';
+  const matched = state._matchedCustomTracks || [];
+
+  if (!title) {
+    showToast('Please enter a playlist title', 'error');
+    return;
+  }
+
+  if (matched.length === 0) {
+    showToast('No tracks matched the selected criteria', 'error');
+    return;
+  }
+
+  if (elements.customPlaylistSpinner) elements.customPlaylistSpinner.classList.remove('hidden');
+  if (elements.btnCreateCustomPlaylist) elements.btnCreateCustomPlaylist.disabled = true;
+
+  try {
+    const trackIds = matched.map(t => t.id);
+    const res = await fetch(`${API_BASE}/playlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: title,
+        description: `Custom curated playlist (${trackIds.length} tracks)`,
+        track_ids: trackIds
+      })
+    });
+    const newP = await res.json();
+    if (!res.ok) throw new Error(newP.detail || 'Failed to create playlist');
+
+    closeModal(elements.customPlaylistModal);
+    showToast(`Created playlist "${title}" with ${trackIds.length} tracks!`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+    switchTab('playlists');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (elements.customPlaylistSpinner) elements.customPlaylistSpinner.classList.add('hidden');
+    if (elements.btnCreateCustomPlaylist) elements.btnCreateCustomPlaylist.disabled = false;
+  }
+}
+
+// -------------------------------------------------------------
 // Event Listeners Setup
 // -------------------------------------------------------------
 function setupEventListeners() {
   // Navigation Tabs
-  elements.navTabLibrary.addEventListener('click', () => switchTab('library'));
-  elements.navTabPlaylists.addEventListener('click', () => switchTab('playlists'));
-  elements.navTabLocal.addEventListener('click', () => switchTab('local'));
+  if (elements.navTabLibrary) elements.navTabLibrary.addEventListener('click', () => switchTab('library'));
+  if (elements.navTabPlaylists) elements.navTabPlaylists.addEventListener('click', () => switchTab('playlists'));
+  if (elements.navTabLocal) elements.navTabLocal.addEventListener('click', () => switchTab('local'));
 
   // Importer
-  elements.btnImport.addEventListener('click', handleImportText);
-  elements.btnUploadCsv.addEventListener('click', () => elements.fileUploadInput.click());
-  elements.fileUploadInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) handleFileUpload(e.target.files[0]);
-  });
-  elements.btnLoadSample.addEventListener('click', () => {
-    elements.importInput.value = DEMO_TRACKS_INPUT;
-  });
-  elements.btnImportYtLikes.addEventListener('click', handleImportYtLikes);
-  elements.btnClearTracks.addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to clear all imported tracks?')) return;
-    await fetch(`${API_BASE}/tracks`, { method: 'DELETE' });
-    showToast('Library cleared', 'info');
-    await refreshAll();
-  });
+  if (elements.btnImport) elements.btnImport.addEventListener('click', handleImportText);
+  if (elements.btnUploadCsv && elements.fileUploadInput) {
+    elements.btnUploadCsv.addEventListener('click', () => elements.fileUploadInput.click());
+    elements.fileUploadInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFileUpload(e.target.files[0]);
+    });
+  }
+  if (elements.btnLoadSample) {
+    elements.btnLoadSample.addEventListener('click', () => {
+      elements.importInput.value = DEMO_TRACKS_INPUT;
+    });
+  }
+  if (elements.btnImportYtLikes) elements.btnImportYtLikes.addEventListener('click', handleImportYtLikes);
+  if (elements.btnClearTracks) {
+    elements.btnClearTracks.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear all imported tracks?')) return;
+      await fetch(`${API_BASE}/tracks`, { method: 'DELETE' });
+      showToast('Library cleared', 'info');
+      await refreshAll();
+    });
+  }
 
   // Local Scanner Modal & Actions
-  elements.btnOpenScanLocalModal.addEventListener('click', () => openModal(elements.scanLocalModal));
-  elements.btnConfirmScanLocal.addEventListener('click', () => handleScanLocalFolder(elements.modalInputScanPath.value));
-  elements.btnTriggerScanPath.addEventListener('click', () => handleScanLocalFolder(elements.inputLocalScanPath.value));
-  elements.btnTagAllLocalTracks.addEventListener('click', handleTagAllLocalTracks);
-  elements.btnOrganizeLocalFiles.addEventListener('click', handleOrganizeLocalFiles);
-  elements.btnRefreshLocalList.addEventListener('click', () => renderLocalTracksTable());
+  if (elements.btnOpenScanLocalModal) elements.btnOpenScanLocalModal.addEventListener('click', () => openModal(elements.scanLocalModal));
+  if (elements.btnConfirmScanLocal) elements.btnConfirmScanLocal.addEventListener('click', () => handleScanLocalFolder(elements.modalInputScanPath.value));
+  if (elements.btnTriggerScanPath) elements.btnTriggerScanPath.addEventListener('click', () => handleScanLocalFolder(elements.inputLocalScanPath.value));
+  if (elements.btnTagAllLocalTracks) elements.btnTagAllLocalTracks.addEventListener('click', handleTagAllLocalTracks);
+  if (elements.btnOrganizeLocalFiles) elements.btnOrganizeLocalFiles.addEventListener('click', handleOrganizeLocalFiles);
+  if (elements.btnRefreshLocalList) elements.btnRefreshLocalList.addEventListener('click', () => renderLocalTracksTable());
 
   // AI Classifier
-  elements.btnClassify.addEventListener('click', handleClassifyTracks);
+  if (elements.btnClassify) elements.btnClassify.addEventListener('click', handleClassifyTracks);
 
   // Filters & Search
-  elements.filterSearch.addEventListener('input', (e) => {
-    state.filters.search = e.target.value;
-    applyFiltersAndRender();
-  });
-  elements.filterSource.addEventListener('change', (e) => {
-    state.filters.source = e.target.value;
-    applyFiltersAndRender();
-  });
-  elements.filterMainGenre.addEventListener('change', (e) => {
-    state.filters.mainGenre = e.target.value;
-    updateGenreFilterDropdowns();
-    applyFiltersAndRender();
-  });
-  elements.filterSubGenre.addEventListener('change', (e) => {
-    state.filters.subGenre = e.target.value;
-    applyFiltersAndRender();
-  });
+  if (elements.filterSearch) {
+    elements.filterSearch.addEventListener('input', (e) => {
+      state.filters.search = e.target.value;
+      applyFiltersAndRender();
+    });
+  }
+  if (elements.filterSource) {
+    elements.filterSource.addEventListener('change', (e) => {
+      state.filters.source = e.target.value;
+      applyFiltersAndRender();
+    });
+  }
+  if (elements.filterMainGenre) {
+    elements.filterMainGenre.addEventListener('change', (e) => {
+      state.filters.mainGenre = e.target.value;
+      updateGenreFilterDropdowns();
+      applyFiltersAndRender();
+    });
+  }
+  if (elements.filterSubGenre) {
+    elements.filterSubGenre.addEventListener('change', (e) => {
+      state.filters.subGenre = e.target.value;
+      applyFiltersAndRender();
+    });
+  }
 
   // View Mode
-  elements.btnViewGrid.addEventListener('click', () => {
-    state.viewMode = 'grid';
-    elements.btnViewGrid.classList.add('active');
-    elements.btnViewTable.classList.remove('active');
-    renderStudioContent();
-  });
-  elements.btnViewTable.addEventListener('click', () => {
-    state.viewMode = 'table';
-    elements.btnViewTable.classList.add('active');
-    elements.btnViewGrid.classList.remove('active');
-    renderStudioContent();
-  });
+  if (elements.btnViewGrid) {
+    elements.btnViewGrid.addEventListener('click', () => {
+      state.viewMode = 'grid';
+      elements.btnViewGrid.classList.add('active');
+      if (elements.btnViewTable) elements.btnViewTable.classList.remove('active');
+      renderStudioContent();
+    });
+  }
+  if (elements.btnViewTable) {
+    elements.btnViewTable.addEventListener('click', () => {
+      state.viewMode = 'table';
+      elements.btnViewTable.classList.add('active');
+      if (elements.btnViewGrid) elements.btnViewGrid.classList.remove('active');
+      renderStudioContent();
+    });
+  }
+
+  // Merge & Custom Playlist Triggers
+  if (elements.btnOpenMergeModal) elements.btnOpenMergeModal.addEventListener('click', openMergeModal);
+  if (elements.btnConfirmMerge) elements.btnConfirmMerge.addEventListener('click', handleConfirmMerge);
+  if (elements.btnOpenCustomPlaylistModal) elements.btnOpenCustomPlaylistModal.addEventListener('click', openCustomPlaylistModal);
+  if (elements.btnCreateCustomPlaylist) elements.btnCreateCustomPlaylist.addEventListener('click', handleCreateCustomPlaylist);
+
+  if (elements.selectCustomMainGenre) elements.selectCustomMainGenre.addEventListener('change', updateCustomPlaylistPreview);
+  if (elements.selectCustomSubGenre) elements.selectCustomSubGenre.addEventListener('change', updateCustomPlaylistPreview);
+  if (elements.inputCustomVibeQuery) elements.inputCustomVibeQuery.addEventListener('input', updateCustomPlaylistPreview);
 
   // Playlists Studio Buttons
-  elements.btnOpenCreatePlaylistModal.addEventListener('click', openCreatePlaylistModal);
-  elements.btnConfirmCreatePlaylist.addEventListener('click', handleConfirmCreatePlaylist);
-  elements.btnAutoGeneratePlaylists.addEventListener('click', autoGeneratePlaylists);
-  elements.btnExportAllPlaylists.addEventListener('click', exportAllPlaylistsToYT);
-  elements.btnConfirmAddGenreToPlaylist.addEventListener('click', handleConfirmAddGenreToPlaylist);
-  elements.btnConfirmAddToPlaylist.addEventListener('click', handleConfirmAddToPlaylist);
-  elements.btnQuickCreatePlaylistFromFilter.addEventListener('click', quickCreatePlaylistFromCurrentFilter);
+  if (elements.btnOpenCreatePlaylistModal) elements.btnOpenCreatePlaylistModal.addEventListener('click', openCreatePlaylistModal);
+  if (elements.btnConfirmCreatePlaylist) elements.btnConfirmCreatePlaylist.addEventListener('click', handleConfirmCreatePlaylist);
+  if (elements.btnAutoGeneratePlaylists) elements.btnAutoGeneratePlaylists.addEventListener('click', autoGeneratePlaylists);
+  if (elements.btnExportAllPlaylists) elements.btnExportAllPlaylists.addEventListener('click', exportAllPlaylistsToYT);
+  if (elements.btnConfirmAddGenreToPlaylist) elements.btnConfirmAddGenreToPlaylist.addEventListener('click', handleConfirmAddGenreToPlaylist);
+  if (elements.btnConfirmAddToPlaylist) elements.btnConfirmAddToPlaylist.addEventListener('click', handleConfirmAddToPlaylist);
+  if (elements.btnQuickCreatePlaylistFromFilter) elements.btnQuickCreatePlaylistFromFilter.addEventListener('click', quickCreatePlaylistFromCurrentFilter);
 
   // Selection Bar Actions
-  elements.btnAddSelectedToPlaylist.addEventListener('click', () => openAddToPlaylistModal());
-  elements.btnDownloadSelectedTracks.addEventListener('click', handleDownloadSelectedTracks);
-  elements.btnTagSelectedTracks.addEventListener('click', handleTagSelectedTracks);
-  elements.btnDeselectAllTracks.addEventListener('click', deselectAllTracks);
+  if (elements.btnAddSelectedToPlaylist) elements.btnAddSelectedToPlaylist.addEventListener('click', () => openAddToPlaylistModal());
+  if (elements.btnDownloadSelectedTracks) elements.btnDownloadSelectedTracks.addEventListener('click', handleDownloadSelectedTracks);
+  if (elements.btnTagSelectedTracks) elements.btnTagSelectedTracks.addEventListener('click', handleTagSelectedTracks);
+  if (elements.btnDeselectAllTracks) elements.btnDeselectAllTracks.addEventListener('click', deselectAllTracks);
 
   // Inspector Search & Actions
-  elements.inspectorSearch.addEventListener('input', () => {
-    if (state.currentInspectingPlaylist) {
-      renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
-    }
-  });
-  elements.btnInspectorDownloadAll.addEventListener('click', () => {
-    if (state.currentInspectingPlaylist) {
-      handleDownloadPlaylist(state.currentInspectingPlaylist.id);
-    }
-  });
-  elements.btnInspectorAddGenre.addEventListener('click', () => {
-    if (state.currentInspectingPlaylist) {
-      openAddGenreModal(state.currentInspectingPlaylist.id);
-    }
-  });
-  elements.btnInspectorExportYT.addEventListener('click', () => {
-    if (state.currentInspectingPlaylist) {
-      exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
-    }
-  });
+  if (elements.inspectorSearch) {
+    elements.inspectorSearch.addEventListener('input', () => {
+      if (state.currentInspectingPlaylist) {
+        renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
+      }
+    });
+  }
+  if (elements.btnInspectorDownloadAll) {
+    elements.btnInspectorDownloadAll.addEventListener('click', () => {
+      if (state.currentInspectingPlaylist) {
+        handleDownloadPlaylist(state.currentInspectingPlaylist.id);
+      }
+    });
+  }
+  if (elements.btnInspectorAddGenre) {
+    elements.btnInspectorAddGenre.addEventListener('click', () => {
+      if (state.currentInspectingPlaylist) {
+        openAddGenreModal(state.currentInspectingPlaylist.id);
+      }
+    });
+  }
+  if (elements.btnInspectorExportYT) {
+    elements.btnInspectorExportYT.addEventListener('click', () => {
+      if (state.currentInspectingPlaylist) {
+        exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
+      }
+    });
+  }
 
   // Vinyl Deck Controls
   if (elements.btnPlayerPlayToggle) {
     elements.btnPlayerPlayToggle.addEventListener('click', toggleVinylPlayback);
   }
+  if (elements.btnPlayerPrev) {
+    elements.btnPlayerPrev.addEventListener('click', playPrevTrack);
+  }
+  if (elements.btnPlayerNext) {
+    elements.btnPlayerNext.addEventListener('click', playNextTrack);
+  }
 
   // Settings
-  elements.btnOpenSettings.addEventListener('click', () => openModal(elements.settingsModal));
-  elements.btnSaveSettings.addEventListener('click', handleSaveSettings);
-  elements.btnConnectYT.addEventListener('click', handleConnectYT);
+  if (elements.btnOpenSettings) elements.btnOpenSettings.addEventListener('click', () => openModal(elements.settingsModal));
+  if (elements.btnSaveSettings) elements.btnSaveSettings.addEventListener('click', handleSaveSettings);
+  if (elements.btnConnectYT) elements.btnConnectYT.addEventListener('click', handleConnectYT);
 
   // Modal Closers
   document.querySelectorAll('[data-close]').forEach(btn => {

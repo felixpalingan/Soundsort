@@ -572,6 +572,28 @@ body.vinyl-theme {
   gap: 20px;
 }
 
+.tab-content {
+  display: none !important;
+}
+
+.tab-content.active {
+  display: flex !important;
+  flex-direction: column;
+  gap: 20px;
+  animation: fadeInTab 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInTab {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .sleeve-card-section {
   background: var(--sleeve-surface);
   border: 1px solid var(--sleeve-border);

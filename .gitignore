@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# Sensitive Data & Local State (IMPORTANT)
+data/
+backend/data/ytmusic_auth.json
+backend/data/settings.json
+*.auth.json
+.env
+
+# Node / Frontend
+node_modules/
+dist/
+.vite/
+
+# Logs & IDE
+*.log
+.vscode/
+.idea/
+.gemini/

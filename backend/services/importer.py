@@ -341,6 +341,43 @@ class MusicImporter:
 
         return tracks
 
+    def _import_soundcloud(self, url: str) -> List[TrackItem]:
+        """
+        Extract song metadata from SoundCloud track or set URL using oEmbed API & yt-dlp fallback.
+        """
+        import urllib.request
+        import urllib.parse
+        import json
+
+        # 1. Official SoundCloud oEmbed API
+        try:
+            oembed_url = f"https://soundcloud.com/oembed?url={urllib.parse.quote(url)}&format=json"
+            req = urllib.request.Request(oembed_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode())
+                    raw_title = data.get("title", "")
+                    author = data.get("author_name", "Unknown Artist")
+                    thumb = data.get("thumbnail_url", "")
+                    # SoundCloud oEmbed title is often "Song Title by Artist"
+                    if f" by {author}".lower() in raw_title.lower():
+                        clean_raw = re.sub(rf"\s+by\s+{re.escape(author)}$", "", raw_title, flags=re.IGNORECASE)
+                    else:
+                        clean_raw = raw_title
+                    c_title, c_artist = clean_track_metadata(clean_raw, author)
+                    return [TrackItem(
+                        title=c_title,
+                        artist=c_artist,
+                        thumbnail=thumb,
+                        source_platform="soundcloud",
+                        source_url=url
+                    )]
+        except Exception as e_oe:
+            logger.warning(f"SoundCloud oEmbed failed for {url}: {e_oe}")
+
+        # 2. Fallback to yt-dlp
+        return self._import_with_ytdlp(url, "soundcloud")
+
     def _import_youtube(self, url: str) -> List[TrackItem]:
         # 1. Check if URL is a YouTube / YouTube Music playlist or mix
         playlist_match = re.search(r"list=([a-zA-Z0-9_-]+)", url)

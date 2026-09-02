@@ -997,6 +997,7 @@ def api_download_playlist(playlist_id: str):
     if not p:
         raise HTTPException(status_code=404, detail="Playlist not found")
 
+    import re
     safe_pl_title = re.sub(r'[\\/*?:"<>|]', '_', p.title).strip() or "Playlist"
     target_pl_dir = DOWNLOADS_DIR / safe_pl_title
     target_pl_dir.mkdir(parents=True, exist_ok=True)
@@ -1030,6 +1031,95 @@ def api_download_playlist(playlist_id: str):
         "downloaded": downloaded,
         "failed": failed
     }
+
+
+# -------------------------------------------------------------
+# Synced Lyrics & Audio Streaming Endpoints
+# -------------------------------------------------------------
+@app.get("/api/lyrics")
+def api_get_lyrics(title: str, artist: Optional[str] = ""):
+    """
+    Fetch synchronized (LRC) and plain lyrics for a track using LRCLIB API.
+    """
+    import urllib.request
+    import urllib.parse
+    
+    clean_title = title.strip()
+    clean_artist = (artist or "").strip()
+    
+    params = urllib.parse.urlencode({
+        "track_name": clean_title,
+        "artist_name": clean_artist
+    })
+    url = f"https://lrclib.net/api/get?{params}"
+    
+    req = urllib.request.Request(url, headers={"User-Agent": "SoundSort-AI/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode())
+                return {
+                    "success": True,
+                    "syncedLyrics": data.get("syncedLyrics") or "",
+                    "plainLyrics": data.get("plainLyrics") or "",
+                    "duration": data.get("duration") or 0,
+                    "artistName": data.get("artistName") or clean_artist,
+                    "trackName": data.get("trackName") or clean_title,
+                    "albumName": data.get("albumName") or ""
+                }
+    except Exception as e:
+        logger.warning(f"LRCLIB fetch error: {e}")
+        # Try search fallback
+        try:
+            q_params = urllib.parse.urlencode({"q": f"{clean_artist} {clean_title}"})
+            search_url = f"https://lrclib.net/api/search?{q_params}"
+            search_req = urllib.request.Request(search_url, headers={"User-Agent": "SoundSort-AI/1.0"})
+            with urllib.request.urlopen(search_req, timeout=5) as resp:
+                if resp.status == 200:
+                    results = json.loads(resp.read().decode())
+                    if results and len(results) > 0:
+                        first = results[0]
+                        return {
+                            "success": True,
+                            "syncedLyrics": first.get("syncedLyrics") or "",
+                            "plainLyrics": first.get("plainLyrics") or "",
+                            "duration": first.get("duration") or 0,
+                            "artistName": first.get("artistName") or clean_artist,
+                            "trackName": first.get("trackName") or clean_title,
+                            "albumName": first.get("albumName") or ""
+                        }
+        except Exception as e2:
+            logger.warning(f"LRCLIB fallback error: {e2}")
+
+    return {
+        "success": False,
+        "syncedLyrics": "",
+        "plainLyrics": f"Lyrics for {clean_title} by {clean_artist}\n(No synced lyrics found in database)",
+        "duration": 0
+    }
+
+@app.get("/api/player/stream/{track_id}")
+def api_stream_local_audio(track_id: str):
+    """
+    Stream audio file content if track is stored locally.
+    """
+    from fastapi.responses import FileResponse
+    all_tracks = get_all_tracks()
+    tr = next((t for t in all_tracks if t.id == track_id), None)
+    if not tr or not tr.is_local or not tr.file_path or not os.path.exists(tr.file_path):
+        raise HTTPException(status_code=404, detail="Audio file not available locally on disk.")
+
+    media_type = "audio/mpeg"
+    if tr.file_path.endswith(".flac"):
+        media_type = "audio/flac"
+    elif tr.file_path.endswith(".m4a") or tr.file_path.endswith(".mp4"):
+        media_type = "audio/mp4"
+    elif tr.file_path.endswith(".ogg") or tr.file_path.endswith(".opus"):
+        media_type = "audio/ogg"
+    elif tr.file_path.endswith(".wav"):
+        media_type = "audio/wav"
+
+    return FileResponse(tr.file_path, media_type=media_type, filename=os.path.basename(tr.file_path))
 
 
 # Mount Frontend static files

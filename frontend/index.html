@@ -3,440 +3,487 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundSort — Hi-Fi Vinylist Music Studio & Classifier</title>
-  <meta name="description" content="Analog-inspired music classifier, web playlist studio, local ID3 tagger, and YouTube Music sync.">
+  <title>SoundSort AI — Hi-Fi Vinyl Studio & Synced Lyrics Mega App</title>
+  <meta name="description" content="Dedicated Hi-Fi Vinyl Player with real-time synced lyrics, AI Genre Analyzer, Local ID3 Tagger, and YouTube Music Sync.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&family=Syne:wght@700;800;900&family=Cabinet+Grotesk:wght@800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="vinyl-theme">
   
-  <div class="vinyl-stage">
+  <div class="vinyl-mega-stage">
     
-    <!-- App Container Frame -->
-    <div class="vinyl-app-deck">
-
-      <!-- ========================================================= -->
-      <!-- TOP DECK BAR -->
-      <!-- ========================================================= -->
-      <header class="deck-topbar">
-        <div class="deck-brand">
-          <div class="brand-vinyl-badge">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 2a10 10 0 0 0 0 20"></path>
-            </svg>
-          </div>
-          <div class="brand-text-deck">
-            <span class="brand-logo-text">vinylist<span class="dot-red">.</span></span>
-            <span class="brand-subtag">SoundSort AI Edition</span>
-          </div>
+    <!-- ========================================================= -->
+    <!-- TOP DECK BAR & 5-MODULE MEGA APP NAVIGATION -->
+    <!-- ========================================================= -->
+    <header class="deck-topbar">
+      <div class="deck-brand">
+        <div class="brand-monogram">S/M</div>
+        <div class="brand-text-deck">
+          <span class="brand-logo-text">SOUNDSORT AI</span>
+          <span class="brand-subtag">Hi-Fi Vinyl & Analog Studio</span>
         </div>
+      </div>
 
-        <!-- Center Deck Navigation -->
-        <nav class="deck-nav" aria-label="Deck Navigation">
-          <button id="navTabLibrary" class="deck-nav-btn active" data-tab="library" aria-selected="true" role="tab">
-            <span>Track Library</span>
-            <span class="deck-nav-count" id="tabCountLibrary">0</span>
-          </button>
-          <button id="navTabPlaylists" class="deck-nav-btn" data-tab="playlists" aria-selected="false" role="tab">
-            <span>Playlists Studio</span>
-            <span class="deck-nav-count red-badge" id="tabCountPlaylists">0</span>
-          </button>
-          <button id="navTabLocal" class="deck-nav-btn" data-tab="local" aria-selected="false" role="tab">
-            <span>Local & Downloads</span>
-            <span class="deck-nav-count" id="tabCountLocal">0</span>
-          </button>
-        </nav>
+      <!-- 5 Dedicated Module Tabs -->
+      <nav class="deck-nav" aria-label="Mega App Navigation">
+        <button id="navTabPlayer" class="deck-nav-btn active" data-tab="player" aria-selected="true" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2a10 10 0 0 0 0 20"/></svg>
+          <span>1. Vinyl Player</span>
+        </button>
+        <button id="navTabAnalyzer" class="deck-nav-btn" data-tab="analyzer" aria-selected="false" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>2. AI Analyzer</span>
+          <span class="deck-nav-count" id="tabCountLibrary">0</span>
+        </button>
+        <button id="navTabTagger" class="deck-nav-btn" data-tab="tagger" aria-selected="false" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          <span>3. ID3 Tagger</span>
+          <span class="deck-nav-count" id="tabCountLocal">0</span>
+        </button>
+        <button id="navTabDownloader" class="deck-nav-btn" data-tab="downloader" aria-selected="false" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>4. Downloader</span>
+        </button>
+        <button id="navTabPlaylists" class="deck-nav-btn" data-tab="playlists" aria-selected="false" role="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></svg>
+          <span>5. Playlists Studio</span>
+          <span class="deck-nav-count red-badge" id="tabCountPlaylists">0</span>
+        </button>
+      </nav>
 
-        <!-- Deck Top Actions -->
-        <div class="deck-top-actions">
-          <div class="status-indicator-pill" id="geminiStatusChip" title="Gemini AI Engine">
-            <span class="status-led led-green"></span>
-            <span>Gemini AI</span>
-          </div>
-          <div class="status-indicator-pill" id="ytStatusChip" title="YouTube Music Sync">
-            <span class="status-led led-red"></span>
-            <span>YT Music</span>
-          </div>
-          <button id="btnOpenSettings" class="btn-deck-icon" title="Settings & Auth" aria-label="Open settings and authentication modal">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          </button>
+      <!-- Status Chips & Settings -->
+      <div class="deck-top-actions">
+        <div class="status-indicator-pill" id="geminiStatusChip" title="Gemini AI Engine">
+          <span class="status-led led-green"></span>
+          <span>Gemini AI</span>
         </div>
-      </header>
+        <div class="status-indicator-pill" id="ytStatusChip" title="YouTube Music Sync">
+          <span class="status-led led-red"></span>
+          <span>YT Music</span>
+        </div>
+        <button id="btnOpenSettings" class="btn-deck-icon" title="Settings & Auth" aria-label="Open settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
 
-      <!-- ========================================================= -->
-      <!-- MAIN BODY SPLIT CANVAS -->
-      <!-- ========================================================= -->
-      <div class="deck-split-canvas">
-        
-        <!-- LEFT WING: DARK ANALOG TURNTABLE & HERO DECK -->
-        <aside class="deck-left-wing">
+    <!-- ========================================================= -->
+    <!-- MAIN APPLICATION CONTAINER -->
+    <!-- ========================================================= -->
+    <main class="vinyl-main-view">
+
+      <!-- ======================================================= -->
+      <!-- MODULE 1: DEDICATED HI-FI VINYL PLAYER & SYNCED LYRICS -->
+      <!-- ======================================================= -->
+      <section id="modulePlayer" class="module-page active">
+        <div class="player-canvas-grid">
           
-          <!-- Vinyl Player Centerpiece -->
-          <div class="turntable-assembly">
-            <div class="vinyl-record-wrap">
-              <div class="vinyl-disc" id="turntableDisc">
+          <!-- Left Side: Grand Turntable Deck & Analog Controls -->
+          <div class="player-turntable-side">
+            
+            <div class="grand-turntable-deck">
+              <!-- Animated Vinyl Disc -->
+              <div class="grand-vinyl-disc" id="turntableDisc">
                 <div class="vinyl-groove-rings"></div>
                 <div class="vinyl-center-label" id="vinylCenterLabel">
                   <div class="vinyl-center-art" id="vinylCenterArt"></div>
                   <div class="vinyl-spindle-hole"></div>
                 </div>
               </div>
-              <div class="turntable-tonearm" id="turntableTonearm">
-                <div class="tonearm-base"></div>
-                <div class="tonearm-lever"></div>
-                <div class="tonearm-headshell"></div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Side A Editorial Header -->
-          <div class="deck-side-banner">
-            <div class="side-lettering">
-              <span class="side-big">A</span>
-              <span class="side-word">side</span>
-            </div>
-            <div class="active-playing-info" id="activePlayingInfo">
-              <div class="playing-tag-pill" id="activePlayingGenre">Alt Rock / Indie</div>
-              <div class="playing-title" id="activePlayingTitle">Select a track to cue record</div>
-              <div class="playing-artist" id="activePlayingArtist">SoundSort AI Analog Engine</div>
-            </div>
-          </div>
-
-          <!-- Quick Actions Panel in Left Wing -->
-          <div class="left-controls-panel">
-            <div class="deck-stat-pills">
-              <div class="deck-stat-item">
-                <span class="stat-num" id="statTotalTracks">0</span>
-                <span class="stat-desc">Tracks In Deck</span>
-              </div>
-              <div class="deck-stat-item">
-                <span class="stat-num" id="statClassified">0</span>
-                <span class="stat-desc">AI Classified</span>
-              </div>
-              <div class="deck-stat-item">
-                <span class="stat-num" id="statLocal">0</span>
-                <span class="stat-desc">Local Files</span>
-              </div>
-              <div class="deck-stat-item">
-                <span class="stat-num" id="statSynced">0</span>
-                <span class="stat-desc">Synced to YT</span>
-              </div>
-            </div>
-
-            <!-- AI Classification Quick Trigger -->
-            <div class="ai-deck-trigger-box">
-              <div class="ai-progress-wrapper hidden" id="aiProgressWrapper">
-                <div class="progress-info-row">
-                  <span class="progress-status-label" id="aiProgressLabel">✨ Classifying in batches...</span>
-                  <span class="progress-percentage-label" id="aiProgressPercent">0%</span>
+              <!-- High Precision Tonearm with Red LED Cartridge -->
+              <div class="grand-tonearm" id="turntableTonearm">
+                <div class="tonearm-pivot-base"></div>
+                <div class="tonearm-arm-rod"></div>
+                <div class="tonearm-headshell-cartridge">
+                  <div class="cartridge-led-glow"></div>
                 </div>
-                <div class="progress-bar-wrapper">
-                  <div class="progress-bar-fill" id="aiProgressBarFill"></div>
+              </div>
+
+              <!-- Circular Time Arc Tracker -->
+              <div class="turntable-time-arc">
+                <span class="time-readout" id="playerTimeCurrent">0:00</span>
+                <div class="arc-track-line">
+                  <div class="arc-progress-fill" id="playerArcFill"></div>
+                  <div class="arc-scrubber-dot" id="playerArcDot"></div>
                 </div>
-                <div class="progress-current-batch" id="aiProgressSubtext">0 / 0 analyzed</div>
+                <span class="time-readout" id="playerTimeTotal">3:45</span>
+              </div>
+            </div>
+
+            <!-- Analog Rotary Knobs Section -->
+            <div class="player-knobs-row">
+              <div class="rotary-knob-unit">
+                <div class="rotary-knob" id="knobPitch" title="Adjust Pitch / RPM Speed">
+                  <div class="knob-indicator-line"></div>
+                </div>
+                <div class="knob-meta">
+                  <span class="knob-title">PITCH</span>
+                  <span class="knob-sub" id="pitchValueLabel">33 RPM</span>
+                </div>
               </div>
 
-              <div class="classify-options-row">
-                <label class="checkbox-container">
-                  <input type="checkbox" id="chkOnlyUncategorized" checked>
-                  <span class="checkmark"></span>
-                  <span class="checkbox-text">Skip yang sudah terklasifikasi</span>
-                </label>
+              <div class="player-mid-cue-btn">
+                <button class="btn-analog-play-cue" id="btnGrandPlayToggle" title="Play or Pause Vinyl Deck">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" id="grandPlaySvg"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
               </div>
 
-              <button id="btnClassify" class="btn-analog-red btn-full">
-                <span class="spinner hidden" id="classifySpinner"></span>
-                <span id="btnClassifyText">⚡ Run Gemini AI Sub-genre Classifier</span>
-              </button>
+              <div class="rotary-knob-unit">
+                <div class="rotary-knob" id="knobVolume" title="Analog Master Volume">
+                  <div class="knob-indicator-line" style="transform: rotate(45deg);"></div>
+                </div>
+                <div class="knob-meta">
+                  <span class="knob-title">VOLUME</span>
+                  <span class="knob-sub" id="volumeValueLabel">85%</span>
+                </div>
+              </div>
             </div>
 
           </div>
 
-        </aside>
-
-        <!-- RIGHT WING: WARM CREAM EDITORIAL SLEEVE (CURATION STUDIO) -->
-        <section class="deck-right-wing">
-          
-          <!-- ======================================================= -->
-          <!-- TAB 1: TRACK LIBRARY -->
-          <!-- ======================================================= -->
-          <div id="sectionLibrary" class="tab-content active">
+          <!-- Right Side: Ultra-Bold Poster Typography & Synced Lyrics -->
+          <div class="player-lyrics-poster-side">
             
-            <!-- Sleeve Header & Source Importer -->
-            <div class="sleeve-card-section">
-              <div class="sleeve-section-title-row">
-                <div>
-                  <h2 class="sleeve-title">Sound Ingestion & Track Curation</h2>
-                  <p class="sleeve-subtitle">Paste links, drop CSV files, or scan local PC audio folders to curate</p>
-                </div>
-                <div class="source-badges-deck">
-                  <span class="sleeve-chip">💾 Local Audio</span>
-                  <span class="sleeve-chip">📁 CSV List</span>
-                  <span class="sleeve-chip">Spotify</span>
-                  <span class="sleeve-chip">YT Music</span>
-                </div>
+            <!-- Poster Header Top Bar -->
+            <div class="poster-top-bar">
+              <div class="poster-curation-tag" id="playerGenreTag">SOUNDSORT AI &bull; ANALOG MASTER</div>
+              <div class="poster-actions">
+                <button class="btn-poster-action" id="btnToggleLikeCurrent" title="Favorite track" aria-label="Favorite track">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
+                <button class="btn-poster-action" id="btnQuickAddToQueue" title="Add to playlist" aria-label="Add to playlist">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+                <button class="btn-poster-action" id="btnOpenQueueDrawer" title="View Now Playing Queue" aria-label="View track queue">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </button>
               </div>
+            </div>
 
-              <div class="importer-deck-box">
-                <input type="file" id="fileUploadInput" accept=".csv,.txt" style="display: none;">
-                <textarea id="importInput" placeholder="Paste links, tracklists (Artist - Title), or drop CSV file...
+            <!-- Massive Artist & Album Poster Titles -->
+            <div class="poster-headlines">
+              <h1 class="poster-artist-name" id="playerArtistName">TAME IMPALA</h1>
+              <div class="poster-album-title" id="playerAlbumTitle">THE SLOW RUSH</div>
+              <div class="poster-track-title" id="playerTrackTitle">BORDERLINE</div>
+            </div>
+
+            <!-- Real-Time Synced Lyrics Engine Container -->
+            <div class="synced-lyrics-viewport" id="syncedLyricsContainer">
+              <div class="lyrics-loading-state" id="lyricsLoadingPlaceholder">
+                <span class="lyrics-line active">Select any track to cue real-time synced lyrics...</span>
+                <span class="lyrics-line">Synced lyrics will follow playback second-by-second</span>
+                <span class="lyrics-line">Powered by SoundSort & LRCLIB engine</span>
+              </div>
+              <div class="lyrics-lines-wrapper" id="lyricsLinesWrapper"></div>
+            </div>
+
+            <!-- Lyrics Sync Status Footer -->
+            <div class="lyrics-footer-meta">
+              <span class="lyrics-badge" id="lyricsStatusBadge">✨ Synced Lyrics Active</span>
+              <button class="btn-sleeve-ghost btn-sm" id="btnRefreshLyrics">🔄 Refetch Lyrics</button>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- MODULE 2: AI GENRE ANALYZER & CLASSIFIER -->
+      <!-- ======================================================= -->
+      <section id="moduleAnalyzer" class="module-page">
+        <div class="module-sleeve-box">
+          <div class="sleeve-section-title-row">
+            <div>
+              <h2 class="sleeve-title">🧠 Gemini AI Genre Analyzer & Track Curation</h2>
+              <p class="sleeve-subtitle">Ingest songs from text, Spotify/SoundCloud/YouTube links, or CSV, and classify into hyper-specific subgenres.</p>
+            </div>
+            <div class="source-badges-deck">
+              <span class="sleeve-chip">Gemini 3.7 Flash</span>
+              <span class="sleeve-chip">Multi-Source</span>
+              <span class="sleeve-chip">Sub-genre Matrix</span>
+            </div>
+          </div>
+
+          <!-- Ingestion Form -->
+          <div class="importer-deck-box">
+            <input type="file" id="fileUploadInput" accept=".csv,.txt" style="display: none;">
+            <textarea id="importInput" placeholder="Paste links, tracklists (Artist - Title), or drop CSV file...
 Arctic Monkeys - 505
 Paramore - Misery Business
 6arelyhuman - Hands Up!
-Sheila On 7 - Dan" rows="3"></textarea>
-                
-                <div class="importer-deck-footer">
-                  <div class="importer-left-btns">
-                    <button id="btnOpenScanLocalModal" class="btn-sleeve-btn" title="Scan local music folder">
-                      💾 Scan Local Music
-                    </button>
-                    <button id="btnUploadCsv" class="btn-sleeve-btn" title="Upload CSV song list">
-                      📁 Upload CSV
-                    </button>
-                    <button id="btnImportYtLikes" class="btn-sleeve-btn" title="Import Liked Songs from YouTube Music">
-                      ❤️ YT Likes
-                    </button>
-                    <button id="btnLoadSample" class="btn-sleeve-ghost" title="Load sample tracks">
-                      ✨ Demo
-                    </button>
-                  </div>
-                  <div class="importer-right-btns">
-                    <button id="btnClearTracks" class="btn-sleeve-danger">Clear All</button>
-                    <button id="btnImport" class="btn-analog-dark">
-                      <span class="spinner hidden" id="importSpinner"></span>
-                      <span>📥 Extract & Import</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Library Filtering & View Options -->
-            <div class="sleeve-filter-bar">
-              <div class="sleeve-search-wrap">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="filterSearch" placeholder="Search title, artist, genre, or vibe...">
-              </div>
-
-              <div class="sleeve-select-group">
-                <select id="filterSource">
-                  <option value="">All Sources</option>
-                  <option value="local">💾 Local Audio</option>
-                  <option value="online">🌐 Online Tracks</option>
-                </select>
-                <select id="filterMainGenre">
-                  <option value="">All Main Genres</option>
-                </select>
-                <select id="filterSubGenre">
-                  <option value="">All Sub-genres</option>
-                </select>
-              </div>
-
-              <div class="sleeve-view-toggles">
-                <button id="btnOpenMergeModal" class="btn-sleeve-btn btn-sm" title="Merge 2 sub-genres into one">
-                  🔀 Merge
+Sheila On 7 - Dan
+Kordhell - Murder In My Mind" rows="3"></textarea>
+            
+            <div class="importer-deck-footer">
+              <div class="importer-left-btns">
+                <button id="btnUploadCsv" class="btn-sleeve-btn" title="Upload CSV song list">
+                  📁 Upload CSV
                 </button>
-                <button id="btnOpenCustomPlaylistModal" class="btn-sleeve-btn btn-sm" title="Build a custom playlist based on specific genres or vibes">
-                  ✨ Custom
+                <button id="btnImportYtLikes" class="btn-sleeve-btn" title="Import Liked Songs from YouTube Music">
+                  ❤️ YT Likes
                 </button>
-                <button id="btnViewGrid" class="sleeve-view-btn active" title="Grouped View" aria-label="Grouped card view">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                </button>
-                <button id="btnViewTable" class="sleeve-view-btn" title="Table View" aria-label="Table view">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                <button id="btnLoadSample" class="btn-sleeve-ghost" title="Load demo sample tracks">
+                  ✨ Demo
                 </button>
               </div>
-            </div>
-
-            <!-- Dynamic Tracks Content -->
-            <div id="studioContent" class="sleeve-tracks-scroll-area">
-              <div class="empty-state" id="emptyStatePlaceholder">
-                <div class="empty-icon">🎵</div>
-                <h3>No tracks loaded yet</h3>
-                <p>Import songs using links, CSV, or Scan Local Music above to start sorting!</p>
+              <div class="importer-right-btns">
+                <button id="btnClearTracks" class="btn-sleeve-danger">Clear All</button>
+                <button id="btnImport" class="btn-analog-dark">
+                  <span class="spinner hidden" id="importSpinner"></span>
+                  <span>📥 Extract & Ingest Tracks</span>
+                </button>
               </div>
-            </div>
-
-          </div>
-
-          <!-- ======================================================= -->
-          <!-- TAB 2: PLAYLISTS STUDIO -->
-          <!-- ======================================================= -->
-          <div id="sectionPlaylists" class="tab-content">
-            <div class="sleeve-card-section">
-              <div class="sleeve-section-title-row">
-                <div>
-                  <h2 class="sleeve-title">Web Playlists Studio</h2>
-                  <p class="sleeve-subtitle">Curate playlists on the web, add songs by genre or track by track, then export to YouTube Music or download locally.</p>
-                </div>
-                <div class="playlist-header-btns">
-                  <button id="btnOpenCreatePlaylistModal" class="btn-analog-dark">➕ Create Playlist</button>
-                  <button id="btnAutoGeneratePlaylists" class="btn-sleeve-btn">⚡ Auto-From Genres</button>
-                  <button id="btnExportAllPlaylists" class="btn-analog-red">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-                    <span>Export All to YT</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Playlists Grid -->
-              <div class="playlists-grid" id="playlistsGrid"></div>
             </div>
           </div>
 
-          <!-- ======================================================= -->
-          <!-- TAB 3: LOCAL FILES & DOWNLOADS HUB -->
-          <!-- ======================================================= -->
-          <div id="sectionLocal" class="tab-content">
-            <div class="sleeve-card-section">
-              <div class="sleeve-section-title-row">
-                <div>
-                  <h2 class="sleeve-title">Local Audio Files & ID3 Tagger Hub</h2>
-                  <p class="sleeve-subtitle">Scan your PC music library, write AI-classified tags directly to audio files, and download online tracks.</p>
-                </div>
+          <!-- AI Progress & Classify Trigger -->
+          <div class="analyzer-action-bar">
+            <div class="ai-progress-wrapper hidden" id="aiProgressWrapper" style="flex: 1;">
+              <div class="progress-info-row">
+                <span class="progress-status-label" id="aiProgressLabel">✨ Classifying in batches...</span>
+                <span class="progress-percentage-label" id="aiProgressPercent">0%</span>
               </div>
-
-              <!-- 3 Grid Cards -->
-              <div class="local-hub-grid">
-                
-                <!-- Card 1: Scanner -->
-                <div class="local-deck-card">
-                  <div class="card-icon-tag">💾 SCANNER</div>
-                  <h3>Scan Music Folder</h3>
-                  <p class="card-desc">Scan your PC for MP3, FLAC, M4A, OGG, or WAV files.</p>
-                  <div class="form-group" style="margin-top: 10px;">
-                    <div style="display: flex; gap: 6px;">
-                      <input type="text" id="inputLocalScanPath" value="C:\Users\Felix\Music" placeholder="C:\Users\Felix\Music">
-                      <button id="btnTriggerScanPath" class="btn-analog-dark">
-                        <span class="spinner hidden" id="scanSpinner"></span>
-                        <span>Scan</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="path-suggestions">
-                    <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Music')">C:\Users\Felix\Music</span>
-                    <span class="badge badge-draft" onclick="setScanPath('downloads')">downloads/</span>
-                  </div>
-                </div>
-
-                <!-- Card 2: Tagger -->
-                <div class="local-deck-card">
-                  <div class="card-icon-tag">🏷️ ID3 TAGGER</div>
-                  <h3>Auto-Tag Local Audio</h3>
-                  <p class="card-desc">Embed AI Genre, Sub-genre & Vibe directly into local audio files on disk.</p>
-                  <button id="btnTagAllLocalTracks" class="btn-analog-red btn-full" style="margin-top: 18px;">
-                    <span class="spinner hidden" id="tagAllSpinner"></span>
-                    <span>🏷️ Tag All Local Files (<span id="localUntaggedCount">0</span> ready)</span>
-                  </button>
-                </div>
-
-                <!-- Card 3: Organizer -->
-                <div class="local-deck-card">
-                  <div class="card-icon-tag">📂 ORGANIZER</div>
-                  <h3>Sort to Genre Folders</h3>
-                  <p class="card-desc">Organize local audio into clean subfolders named by AI genre.</p>
-                  <div class="form-group" style="margin-top: 10px;">
-                    <input type="text" id="inputOrganizeDestPath" value="C:\Users\Felix\Music\Sorted" placeholder="Destination path">
-                  </div>
-                  <button id="btnOrganizeLocalFiles" class="btn-sleeve-btn btn-full">
-                    <span>📁 Organize Files</span>
-                  </button>
-                </div>
-
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="aiProgressBarFill"></div>
               </div>
+              <div class="progress-current-batch" id="aiProgressSubtext">0 / 0 analyzed</div>
+            </div>
 
-              <!-- Local Tracks Table -->
-              <div style="margin-top: 24px;">
-                <div class="sleeve-section-title-row">
-                  <div>
-                    <h3 style="font-family: var(--font-heading); font-size: 1.15rem;">Local Tracks Library</h3>
-                  </div>
-                  <button id="btnRefreshLocalList" class="btn-sleeve-ghost">🔄 Refresh</button>
-                </div>
-                <div id="localTracksListTableContainer" style="margin-top: 12px;"></div>
-              </div>
+            <div class="classify-options-row">
+              <label class="checkbox-container">
+                <input type="checkbox" id="chkOnlyUncategorized" checked>
+                <span class="checkmark"></span>
+                <span class="checkbox-text">Skip yang sudah terklasifikasi</span>
+              </label>
+            </div>
 
+            <button id="btnClassify" class="btn-analog-red">
+              <span class="spinner hidden" id="classifySpinner"></span>
+              <span id="btnClassifyText">⚡ Run Gemini AI Sub-genre Classifier</span>
+            </button>
+          </div>
+
+          <!-- Filtering & Grid/Table Toolbar -->
+          <div class="sleeve-filter-bar" style="margin-top: 20px;">
+            <div class="sleeve-search-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="filterSearch" placeholder="Search title, artist, genre, or vibe...">
+            </div>
+
+            <div class="sleeve-select-group">
+              <select id="filterSource">
+                <option value="">All Sources</option>
+                <option value="local">💾 Local Audio</option>
+                <option value="online">🌐 Online Tracks</option>
+              </select>
+              <select id="filterMainGenre"><option value="">All Main Genres</option></select>
+              <select id="filterSubGenre"><option value="">All Sub-genres</option></select>
+            </div>
+
+            <div class="sleeve-view-toggles">
+              <button id="btnOpenMergeModal" class="btn-sleeve-btn btn-sm" title="Merge 2 sub-genres into one">🔀 Merge</button>
+              <button id="btnOpenCustomPlaylistModal" class="btn-sleeve-btn btn-sm" title="Build a custom playlist">✨ Custom</button>
+              <button id="btnViewGrid" class="sleeve-view-btn active" title="Grouped View"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></button>
+              <button id="btnViewTable" class="sleeve-view-btn" title="Table View"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
             </div>
           </div>
 
-        </section>
+          <!-- Studio Tracks Content -->
+          <div id="studioContent" class="sleeve-tracks-scroll-area"></div>
+        </div>
+      </section>
 
+      <!-- ======================================================= -->
+      <!-- MODULE 3: LOCAL AUDIO FILE ID3 TAGGER & ORGANIZER -->
+      <!-- ======================================================= -->
+      <section id="moduleTagger" class="module-page">
+        <div class="module-sleeve-box">
+          <div class="sleeve-section-title-row">
+            <div>
+              <h2 class="sleeve-title">🏷️ Local File ID3 Tagger & Folder Organizer</h2>
+              <p class="sleeve-subtitle">Scan local PC audio directories (.mp3, .flac, .m4a, .ogg) and permanently write AI-classified ID3 tags directly to physical files.</p>
+            </div>
+          </div>
+
+          <div class="local-hub-grid">
+            <!-- Card 1: Scanner -->
+            <div class="local-deck-card">
+              <div class="card-icon-tag">💾 DIRECTORY SCANNER</div>
+              <h3>Scan Local Music Folder</h3>
+              <p class="card-desc">Scan your PC for audio files and load them into SoundSort.</p>
+              <div class="form-group" style="margin-top: 10px;">
+                <div style="display: flex; gap: 6px;">
+                  <input type="text" id="inputLocalScanPath" value="C:\Users\Felix\Music" placeholder="C:\Users\Felix\Music">
+                  <button id="btnTriggerScanPath" class="btn-analog-dark">
+                    <span class="spinner hidden" id="scanSpinner"></span>
+                    <span>Scan</span>
+                  </button>
+                </div>
+              </div>
+              <div class="path-suggestions">
+                <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Music')">C:\Users\Felix\Music</span>
+                <span class="badge badge-draft" onclick="setScanPath('downloads')">downloads/</span>
+              </div>
+            </div>
+
+            <!-- Card 2: Batch ID3 Tagger -->
+            <div class="local-deck-card">
+              <div class="card-icon-tag">🏷️ 1-CLICK PHYSICAL TAGGER</div>
+              <h3>Auto-Tag Audio Files</h3>
+              <p class="card-desc">Write ID3v2.4 / Vorbis tags (Genre, Subgenre, Grouping, Vibe) directly to files.</p>
+              <button id="btnTagAllLocalTracks" class="btn-analog-red btn-full" style="margin-top: 18px;">
+                <span class="spinner hidden" id="tagAllSpinner"></span>
+                <span>🏷️ Tag All Classified Local Files (<span id="localUntaggedCount">0</span> ready)</span>
+              </button>
+            </div>
+
+            <!-- Card 3: Organizer -->
+            <div class="local-deck-card">
+              <div class="card-icon-tag">📂 FOLDER RESTRUCTURER</div>
+              <h3>Sort to Genre Folders</h3>
+              <p class="card-desc">Organize local files into subfolders: `Music/Sorted/[Genre]/`.</p>
+              <div class="form-group" style="margin-top: 10px;">
+                <input type="text" id="inputOrganizeDestPath" value="C:\Users\Felix\Music\Sorted" placeholder="Destination path">
+              </div>
+              <button id="btnOrganizeLocalFiles" class="btn-sleeve-btn btn-full">
+                <span>📁 Organize Files</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Local Tracks Table -->
+          <div style="margin-top: 24px;">
+            <div class="sleeve-section-title-row">
+              <div>
+                <h3 style="font-family: var(--font-heading); font-size: 1.15rem;">Local Tracks Library</h3>
+              </div>
+              <button id="btnRefreshLocalList" class="btn-sleeve-ghost">🔄 Refresh List</button>
+            </div>
+            <div id="localTracksListTableContainer" style="margin-top: 12px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- MODULE 4: HIGH-SPEED ONLINE AUDIO DOWNLOADER -->
+      <!-- ======================================================= -->
+      <section id="moduleDownloader" class="module-page">
+        <div class="module-sleeve-box">
+          <div class="sleeve-section-title-row">
+            <div>
+              <h2 class="sleeve-title">⬇️ High-Speed Audio Downloader & Auto-Tagger</h2>
+              <p class="sleeve-subtitle">Download online tracks (YouTube, SoundCloud, Spotify lists) into high-bitrate MP3 files with auto-embedded ID3 metadata tags.</p>
+            </div>
+          </div>
+
+          <div class="downloader-quick-panel">
+            <div class="form-group">
+              <label for="inputSingleDownloadUrl">Download Single Link / Track Name</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="inputSingleDownloadUrl" placeholder="Paste YouTube link or Artist - Track Name...">
+                <button id="btnTriggerQuickDownload" class="btn-analog-dark">
+                  <span class="spinner hidden" id="quickDownloadSpinner"></span>
+                  <span>⬇️ Download MP3 + Tags</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px;">
+            <div class="sleeve-section-title-row">
+              <div>
+                <h3 style="font-family: var(--font-heading); font-size: 1.15rem;">Online Tracks Available to Download</h3>
+                <p class="card-desc">Click download on any track to save to disk with full AI Genre & ID3 tags.</p>
+              </div>
+            </div>
+            <div id="downloaderOnlineTracksContainer" style="margin-top: 12px;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= -->
+      <!-- MODULE 5: WEB PLAYLIST STUDIO & YOUTUBE MUSIC SYNC -->
+      <!-- ======================================================= -->
+      <section id="modulePlaylists" class="module-page">
+        <div class="module-sleeve-box">
+          <div class="sleeve-section-title-row">
+            <div>
+              <h2 class="sleeve-title">📑 Web Playlists Studio & YouTube Music Sync</h2>
+              <p class="sleeve-subtitle">Curate web playlists, dump full genres in 1 click, export directly to YouTube Music, or download entire playlists locally.</p>
+            </div>
+            <div class="playlist-header-btns">
+              <button id="btnOpenCreatePlaylistModal" class="btn-analog-dark">➕ Create Playlist</button>
+              <button id="btnAutoGeneratePlaylists" class="btn-sleeve-btn">⚡ Auto-From Genres</button>
+              <button id="btnExportAllPlaylists" class="btn-analog-red">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                <span>Export All to YT</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Playlists Grid -->
+          <div class="playlists-grid" id="playlistsGrid"></div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- GLOBAL PERSISTENT BOTTOM MINI-PLAYER BAR -->
+    <!-- ========================================================= -->
+    <footer class="deck-bottom-player">
+      <div class="player-left-controls">
+        <button class="transport-btn" id="btnPlayerPrev" title="Previous Track" aria-label="Previous track">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
+        </button>
+        <button class="transport-play-btn" id="btnPlayerPlayToggle" title="Play / Pause Vinyl" aria-label="Play or pause vinyl">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" id="playIconSvg"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+        <button class="transport-btn" id="btnPlayerNext" title="Next Track" aria-label="Next track">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+        </button>
       </div>
 
-      <!-- ========================================================= -->
-      <!-- BOTTOM ANALOG TRANSPORT & WAVEFORM BAR -->
-      <!-- ========================================================= -->
-      <footer class="deck-bottom-player">
-        <div class="player-left-controls">
-          <button class="transport-btn" id="btnPlayerPrev" title="Previous Track" aria-label="Previous track">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
-          </button>
-          <button class="transport-play-btn" id="btnPlayerPlayToggle" title="Play / Pause Vinyl" aria-label="Play or pause vinyl">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" id="playIconSvg"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          </button>
-          <button class="transport-btn" id="btnPlayerNext" title="Next Track" aria-label="Next track">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
-          </button>
+      <!-- Center Scrubber & Info -->
+      <div class="analog-waveform-center">
+        <div class="player-track-snippet">
+          <strong id="deckPlayerTitle">Borderline</strong>
+          <span class="divider-dot">&bull;</span>
+          <span id="deckPlayerArtist">Tame Impala</span>
         </div>
-
-        <!-- Waveform Visualizer Bar -->
-        <div class="analog-waveform-center">
-          <div class="waveform-bars" id="waveformVisualizer">
-            <span class="wave-bar" style="height: 35%;"></span>
-            <span class="wave-bar" style="height: 60%;"></span>
-            <span class="wave-bar" style="height: 90%;"></span>
-            <span class="wave-bar" style="height: 45%;"></span>
-            <span class="wave-bar" style="height: 75%;"></span>
-            <span class="wave-bar active" style="height: 100%;"></span>
-            <span class="wave-bar active" style="height: 85%;"></span>
-            <span class="wave-bar active" style="height: 65%;"></span>
-            <span class="wave-bar active" style="height: 95%;"></span>
-            <span class="wave-bar active" style="height: 50%;"></span>
-            <span class="wave-bar active" style="height: 70%;"></span>
-            <span class="wave-bar active" style="height: 40%;"></span>
-            <span class="wave-bar" style="height: 30%;"></span>
-            <span class="wave-bar" style="height: 60%;"></span>
-            <span class="wave-bar" style="height: 80%;"></span>
-            <span class="wave-bar" style="height: 55%;"></span>
-            <span class="wave-bar" style="height: 25%;"></span>
-            <span class="wave-bar" style="height: 65%;"></span>
-            <span class="wave-bar" style="height: 40%;"></span>
-            <span class="wave-bar" style="height: 20%;"></span>
-          </div>
-          <div class="player-track-snippet">
-            <span id="deckPlayerTitle">SoundSort Analog Vinylist</span>
-            <span class="divider-dot">&bull;</span>
-            <span id="deckPlayerArtist">Ready to Cue</span>
-          </div>
-        </div>
-
-        <!-- Volume Knob / Indicator -->
-        <div class="player-right-knob">
-          <div class="analog-knob" title="Master Level">
-            <div class="knob-indicator"></div>
-          </div>
-          <span class="knob-label">HI-FI 45 RPM</span>
-        </div>
-      </footer>
-
-      <!-- Sticky / Floating Multi-Selection Action Bar -->
-      <div id="selectionActionBar" class="selection-action-bar hidden">
-        <div class="selection-info">
-          <span class="selection-count-badge" id="selectedCountBadge">0</span>
-          <span>tracks cued</span>
-        </div>
-        <div class="selection-actions">
-          <button id="btnAddSelectedToPlaylist" class="btn-analog-dark btn-sm">➕ Add to Playlist</button>
-          <button id="btnDownloadSelectedTracks" class="btn-sleeve-btn btn-sm">⬇️ Download MP3 + Tags</button>
-          <button id="btnTagSelectedTracks" class="btn-sleeve-btn btn-sm">🏷️ Write Tags</button>
-          <button id="btnDeselectAllTracks" class="btn-sleeve-ghost btn-sm">Deselect</button>
+        <div class="global-scrubber-bar" id="globalScrubberBar">
+          <div class="scrubber-fill" id="globalScrubberFill"></div>
         </div>
       </div>
 
+      <!-- Right Knobs & Queue -->
+      <div class="player-right-knob">
+        <span class="knob-label" id="bottomAudioStatus">HI-FI 45 RPM</span>
+        <button class="btn-deck-icon" id="btnBottomJumpToPlayer" title="Open Vinyl Player View" aria-label="Open vinyl player">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Hidden native audio element for actual audio playback -->
+    <audio id="nativeAudioPlayer" preload="auto"></audio>
+
+    <!-- Sticky / Floating Multi-Selection Action Bar -->
+    <div id="selectionActionBar" class="selection-action-bar hidden">
+      <div class="selection-info">
+        <span class="selection-count-badge" id="selectedCountBadge">0</span>
+        <span>tracks cued</span>
+      </div>
+      <div class="selection-actions">
+        <button id="btnAddSelectedToPlaylist" class="btn-analog-dark btn-sm">➕ Add to Playlist</button>
+        <button id="btnDownloadSelectedTracks" class="btn-sleeve-btn btn-sm">⬇️ Download MP3 + Tags</button>
+        <button id="btnTagSelectedTracks" class="btn-sleeve-btn btn-sm">🏷️ Write Tags</button>
+        <button id="btnDeselectAllTracks" class="btn-sleeve-ghost btn-sm">Deselect</button>
+      </div>
     </div>
 
     <!-- ========================================================= -->

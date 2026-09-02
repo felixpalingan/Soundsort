@@ -1,4 +1,4 @@
-// SoundSort AI - Modern Frontend Controller & Playlist Studio & Local Audio Hub
+// SoundSort AI — Modular Mega App Controller & Hi-Fi Synced Lyrics Engine
 
 const API_BASE = '/api';
 
@@ -7,20 +7,31 @@ const state = {
   tracks: [],
   playlists: [],
   selectedTrackIds: new Set(),
-  activeTab: 'library', // 'library' | 'playlists' | 'local'
+  activeModule: 'player', // 'player' | 'analyzer' | 'tagger' | 'downloader' | 'playlists'
   currentInspectingPlaylist: null,
   targetPlaylistForAdd: null,
   allMainGenres: [],
   allSubgenres: [],
   systemStatus: null,
   settings: null,
-  viewMode: 'grid', // 'grid' or 'table'
+  viewMode: 'grid', // 'grid' | 'table'
   filters: {
     search: '',
-    source: '', // '' | 'local' | 'online'
+    source: '',
     mainGenre: '',
     subGenre: ''
-  }
+  },
+  // Player & Synced Lyrics state
+  currentCuedTrack: null,
+  isVinylPlaying: false,
+  syncedLyrics: [], // [{ time: seconds, text: string }]
+  plainLyrics: '',
+  currentTime: 0,
+  duration: 228,
+  activeLyricsIndex: -1,
+  playbackTimer: null,
+  pitchRpm: 33,
+  volumePercent: 85
 };
 
 const DEFAULT_THUMB_SVG = 'data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2"%3E%3Ccircle cx="12" cy="12" r="10"/%3E%3Cpolygon points="10 8 16 12 10 16 10 8"/%3E%3C/svg%3E';
@@ -32,7 +43,8 @@ function getSafeThumb(url) {
   return encodeURI(url.trim());
 }
 
-const DEMO_TRACKS_INPUT = `Arctic Monkeys - 505
+const DEMO_TRACKS_INPUT = `Tame Impala - Borderline
+Arctic Monkeys - 505
 Paramore - Misery Business
 6arelyhuman - Hands Up!
 Sheila On 7 - Dan
@@ -40,58 +52,79 @@ Kordhell - Murder In My Mind
 S3RL - Bass Slut
 YOASOBI - Racing Into The Night
 .Feast - Peradaban
-Slipknot - Psychosocial
-Tenxi - Semangat Pagi`;
+Slipknot - Psychosocial`;
 
-// DOM Elements
+// DOM Elements Registry
 const elements = {
-  // Navigation
-  navTabLibrary: document.getElementById('navTabLibrary'),
+  // Navigation Tabs
+  navTabPlayer: document.getElementById('navTabPlayer'),
+  navTabAnalyzer: document.getElementById('navTabAnalyzer'),
+  navTabTagger: document.getElementById('navTabTagger'),
+  navTabDownloader: document.getElementById('navTabDownloader'),
   navTabPlaylists: document.getElementById('navTabPlaylists'),
-  navTabLocal: document.getElementById('navTabLocal'),
-  sectionLibrary: document.getElementById('sectionLibrary'),
-  sectionPlaylists: document.getElementById('sectionPlaylists'),
-  sectionLocal: document.getElementById('sectionLocal'),
-  tabCountLibrary: document.getElementById('tabCountLibrary'),
-  tabCountPlaylists: document.getElementById('tabCountPlaylists'),
-  tabCountLocal: document.getElementById('tabCountLocal'),
 
-  // Vinyl Deck Elements
+  // Module Pages
+  modulePlayer: document.getElementById('modulePlayer'),
+  moduleAnalyzer: document.getElementById('moduleAnalyzer'),
+  moduleTagger: document.getElementById('moduleTagger'),
+  moduleDownloader: document.getElementById('moduleDownloader'),
+  modulePlaylists: document.getElementById('modulePlaylists'),
+
+  // Badges & Counters
+  tabCountLibrary: document.getElementById('tabCountLibrary'),
+  tabCountLocal: document.getElementById('tabCountLocal'),
+  tabCountPlaylists: document.getElementById('tabCountPlaylists'),
+  geminiStatusChip: document.getElementById('geminiStatusChip'),
+  ytStatusChip: document.getElementById('ytStatusChip'),
+
+  // Hi-Fi Player & Synced Lyrics Elements
   turntableDisc: document.getElementById('turntableDisc'),
   turntableTonearm: document.getElementById('turntableTonearm'),
   vinylCenterArt: document.getElementById('vinylCenterArt'),
-  activePlayingGenre: document.getElementById('activePlayingGenre'),
-  activePlayingTitle: document.getElementById('activePlayingTitle'),
-  activePlayingArtist: document.getElementById('activePlayingArtist'),
-  deckPlayerTitle: document.getElementById('deckPlayerTitle'),
-  deckPlayerArtist: document.getElementById('deckPlayerArtist'),
+  btnGrandPlayToggle: document.getElementById('btnGrandPlayToggle'),
+  grandPlaySvg: document.getElementById('grandPlaySvg'),
+  playerTimeCurrent: document.getElementById('playerTimeCurrent'),
+  playerTimeTotal: document.getElementById('playerTimeTotal'),
+  playerArcFill: document.getElementById('playerArcFill'),
+  playerArcDot: document.getElementById('playerArcDot'),
+  knobPitch: document.getElementById('knobPitch'),
+  pitchValueLabel: document.getElementById('pitchValueLabel'),
+  knobVolume: document.getElementById('knobVolume'),
+  volumeValueLabel: document.getElementById('volumeValueLabel'),
+  playerGenreTag: document.getElementById('playerGenreTag'),
+  playerArtistName: document.getElementById('playerArtistName'),
+  playerAlbumTitle: document.getElementById('playerAlbumTitle'),
+  playerTrackTitle: document.getElementById('playerTrackTitle'),
+  syncedLyricsContainer: document.getElementById('syncedLyricsContainer'),
+  lyricsLinesWrapper: document.getElementById('lyricsLinesWrapper'),
+  lyricsLoadingPlaceholder: document.getElementById('lyricsLoadingPlaceholder'),
+  lyricsStatusBadge: document.getElementById('lyricsStatusBadge'),
+  btnRefreshLyrics: document.getElementById('btnRefreshLyrics'),
+  btnToggleLikeCurrent: document.getElementById('btnToggleLikeCurrent'),
+  btnQuickAddToQueue: document.getElementById('btnQuickAddToQueue'),
+  btnOpenQueueDrawer: document.getElementById('btnOpenQueueDrawer'),
+  nativeAudioPlayer: document.getElementById('nativeAudioPlayer'),
+
+  // Bottom Persistent Mini Player
   btnPlayerPlayToggle: document.getElementById('btnPlayerPlayToggle'),
   btnPlayerPrev: document.getElementById('btnPlayerPrev'),
   btnPlayerNext: document.getElementById('btnPlayerNext'),
   playIconSvg: document.getElementById('playIconSvg'),
-  waveformVisualizer: document.getElementById('waveformVisualizer'),
+  deckPlayerTitle: document.getElementById('deckPlayerTitle'),
+  deckPlayerArtist: document.getElementById('deckPlayerArtist'),
+  globalScrubberBar: document.getElementById('globalScrubberBar'),
+  globalScrubberFill: document.getElementById('globalScrubberFill'),
+  btnBottomJumpToPlayer: document.getElementById('btnBottomJumpToPlayer'),
 
-  // Status Chips & Counters
-  geminiStatusChip: document.getElementById('geminiStatusChip'),
-  ytStatusChip: document.getElementById('ytStatusChip'),
-  activeModelTag: document.getElementById('activeModelTag'),
-  statTotalTracks: document.getElementById('statTotalTracks'),
-  statClassified: document.getElementById('statClassified'),
-  statLocal: document.getElementById('statLocal'),
-  statSynced: document.getElementById('statSynced'),
-
-  // Importer
+  // Analyzer Module Elements
   importInput: document.getElementById('importInput'),
   fileUploadInput: document.getElementById('fileUploadInput'),
   btnUploadCsv: document.getElementById('btnUploadCsv'),
-  btnOpenScanLocalModal: document.getElementById('btnOpenScanLocalModal'),
   btnImport: document.getElementById('btnImport'),
   importSpinner: document.getElementById('importSpinner'),
   btnLoadSample: document.getElementById('btnLoadSample'),
   btnImportYtLikes: document.getElementById('btnImportYtLikes'),
   btnClearTracks: document.getElementById('btnClearTracks'),
-
-  // AI Hub & Progress
   btnClassify: document.getElementById('btnClassify'),
   btnClassifyText: document.getElementById('btnClassifyText'),
   classifySpinner: document.getElementById('classifySpinner'),
@@ -101,8 +134,6 @@ const elements = {
   aiProgressPercent: document.getElementById('aiProgressPercent'),
   aiProgressBarFill: document.getElementById('aiProgressBarFill'),
   aiProgressSubtext: document.getElementById('aiProgressSubtext'),
-
-  // Library Studio & Filters
   filterSearch: document.getElementById('filterSearch'),
   filterSource: document.getElementById('filterSource'),
   filterMainGenre: document.getElementById('filterMainGenre'),
@@ -111,16 +142,9 @@ const elements = {
   btnViewTable: document.getElementById('btnViewTable'),
   studioContent: document.getElementById('studioContent'),
   btnOpenMergeModal: document.getElementById('btnOpenMergeModal'),
-  btnQuickCreatePlaylistFromFilter: document.getElementById('btnQuickCreatePlaylistFromFilter'),
   btnOpenCustomPlaylistModal: document.getElementById('btnOpenCustomPlaylistModal'),
 
-  // Web Playlists Studio View
-  playlistsGrid: document.getElementById('playlistsGrid'),
-  btnOpenCreatePlaylistModal: document.getElementById('btnOpenCreatePlaylistModal'),
-  btnAutoGeneratePlaylists: document.getElementById('btnAutoGeneratePlaylists'),
-  btnExportAllPlaylists: document.getElementById('btnExportAllPlaylists'),
-
-  // Local Hub View
+  // Tagger Module Elements
   inputLocalScanPath: document.getElementById('inputLocalScanPath'),
   btnTriggerScanPath: document.getElementById('btnTriggerScanPath'),
   scanSpinner: document.getElementById('scanSpinner'),
@@ -128,12 +152,23 @@ const elements = {
   tagAllSpinner: document.getElementById('tagAllSpinner'),
   localUntaggedCount: document.getElementById('localUntaggedCount'),
   inputOrganizeDestPath: document.getElementById('inputOrganizeDestPath'),
-  chkCopyInsteadOfMove: document.getElementById('chkCopyInsteadOfMove'),
   btnOrganizeLocalFiles: document.getElementById('btnOrganizeLocalFiles'),
   btnRefreshLocalList: document.getElementById('btnRefreshLocalList'),
   localTracksListTableContainer: document.getElementById('localTracksListTableContainer'),
 
-  // Sticky Multi-Selection Bar
+  // Downloader Module Elements
+  inputSingleDownloadUrl: document.getElementById('inputSingleDownloadUrl'),
+  btnTriggerQuickDownload: document.getElementById('btnTriggerQuickDownload'),
+  quickDownloadSpinner: document.getElementById('quickDownloadSpinner'),
+  downloaderOnlineTracksContainer: document.getElementById('downloaderOnlineTracksContainer'),
+
+  // Playlists Studio Elements
+  playlistsGrid: document.getElementById('playlistsGrid'),
+  btnOpenCreatePlaylistModal: document.getElementById('btnOpenCreatePlaylistModal'),
+  btnAutoGeneratePlaylists: document.getElementById('btnAutoGeneratePlaylists'),
+  btnExportAllPlaylists: document.getElementById('btnExportAllPlaylists'),
+
+  // Selection Action Bar
   selectionActionBar: document.getElementById('selectionActionBar'),
   selectedCountBadge: document.getElementById('selectedCountBadge'),
   btnAddSelectedToPlaylist: document.getElementById('btnAddSelectedToPlaylist'),
@@ -142,6 +177,17 @@ const elements = {
   btnDeselectAllTracks: document.getElementById('btnDeselectAllTracks'),
 
   // Modals
+  settingsModal: document.getElementById('settingsModal'),
+  inputGeminiKey: document.getElementById('inputGeminiKey'),
+  selectGeminiModel: document.getElementById('selectGeminiModel'),
+  inputYtHeaders: document.getElementById('inputYtHeaders'),
+  btnConnectYT: document.getElementById('btnConnectYT'),
+  ytAuthIndicator: document.getElementById('ytAuthIndicator'),
+  inputPlaylistPrefix: document.getElementById('inputPlaylistPrefix'),
+  inputDownloadFolder: document.getElementById('inputDownloadFolder'),
+  btnSaveSettings: document.getElementById('btnSaveSettings'),
+  btnOpenSettings: document.getElementById('btnOpenSettings'),
+
   scanLocalModal: document.getElementById('scanLocalModal'),
   modalInputScanPath: document.getElementById('modalInputScanPath'),
   btnConfirmScanLocal: document.getElementById('btnConfirmScanLocal'),
@@ -176,6 +222,12 @@ const elements = {
   inspectorExportSpinner: document.getElementById('inspectorExportSpinner'),
   inspectorYtLink: document.getElementById('inspectorYtLink'),
 
+  mergeModal: document.getElementById('mergeModal'),
+  selectMergeSource: document.getElementById('selectMergeSource'),
+  inputMergeTarget: document.getElementById('inputMergeTarget'),
+  existingSubgenresList: document.getElementById('existingSubgenresList'),
+  btnConfirmMerge: document.getElementById('btnConfirmMerge'),
+
   customPlaylistModal: document.getElementById('customPlaylistModal'),
   inputCustomPlaylistTitle: document.getElementById('inputCustomPlaylistTitle'),
   selectCustomMainGenre: document.getElementById('selectCustomMainGenre'),
@@ -185,22 +237,6 @@ const elements = {
   customMatchedList: document.getElementById('customMatchedList'),
   btnCreateCustomPlaylist: document.getElementById('btnCreateCustomPlaylist'),
   customPlaylistSpinner: document.getElementById('customPlaylistSpinner'),
-
-  settingsModal: document.getElementById('settingsModal'),
-  inputGeminiKey: document.getElementById('inputGeminiKey'),
-  selectGeminiModel: document.getElementById('selectGeminiModel'),
-  inputYtHeaders: document.getElementById('inputYtHeaders'),
-  btnConnectYT: document.getElementById('btnConnectYT'),
-  ytAuthIndicator: document.getElementById('ytAuthIndicator'),
-  inputPlaylistPrefix: document.getElementById('inputPlaylistPrefix'),
-  inputDownloadFolder: document.getElementById('inputDownloadFolder'),
-  btnSaveSettings: document.getElementById('btnSaveSettings'),
-
-  mergeModal: document.getElementById('mergeModal'),
-  selectMergeSource: document.getElementById('selectMergeSource'),
-  inputMergeTarget: document.getElementById('inputMergeTarget'),
-  existingSubgenresList: document.getElementById('existingSubgenresList'),
-  btnConfirmMerge: document.getElementById('btnConfirmMerge'),
 
   toastContainer: document.getElementById('toastContainer')
 };
@@ -212,12 +248,288 @@ async function initApp() {
   setupEventListeners();
   await loadSettings();
   await refreshAll();
+  
+  // Set default vinyl track if available
+  if (state.allTracks.length > 0) {
+    cueTrackOnVinyl(state.allTracks[0].id);
+  }
 }
 
 async function refreshAll() {
   await loadStatus();
   await loadTracks();
   await loadPlaylists();
+}
+
+// -------------------------------------------------------------
+// Mega App 5-Module Navigation (Router)
+// -------------------------------------------------------------
+function switchModule(moduleName) {
+  state.activeModule = moduleName;
+
+  // Tabs
+  if (elements.navTabPlayer) elements.navTabPlayer.classList.toggle('active', moduleName === 'player');
+  if (elements.navTabAnalyzer) elements.navTabAnalyzer.classList.toggle('active', moduleName === 'analyzer');
+  if (elements.navTabTagger) elements.navTabTagger.classList.toggle('active', moduleName === 'tagger');
+  if (elements.navTabDownloader) elements.navTabDownloader.classList.toggle('active', moduleName === 'downloader');
+  if (elements.navTabPlaylists) elements.navTabPlaylists.classList.toggle('active', moduleName === 'playlists');
+
+  // Pages
+  if (elements.modulePlayer) elements.modulePlayer.classList.toggle('active', moduleName === 'player');
+  if (elements.moduleAnalyzer) elements.moduleAnalyzer.classList.toggle('active', moduleName === 'analyzer');
+  if (elements.moduleTagger) elements.moduleTagger.classList.toggle('active', moduleName === 'tagger');
+  if (elements.moduleDownloader) elements.moduleDownloader.classList.toggle('active', moduleName === 'downloader');
+  if (elements.modulePlaylists) elements.modulePlaylists.classList.toggle('active', moduleName === 'playlists');
+
+  if (moduleName === 'tagger') {
+    renderLocalTracksTable();
+  } else if (moduleName === 'downloader') {
+    renderDownloaderOnlineTable();
+  } else if (moduleName === 'playlists') {
+    renderPlaylistsGrid();
+  } else if (moduleName === 'analyzer') {
+    renderStudioContent();
+  }
+}
+
+// -------------------------------------------------------------
+// Hi-Fi Vinyl Turntable & Synced Lyrics Engine
+// -------------------------------------------------------------
+function parseLrcLyrics(lrcText) {
+  if (!lrcText) return [];
+  const lines = lrcText.split('\n');
+  const result = [];
+  const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/g;
+
+  lines.forEach(line => {
+    let match;
+    const timestamps = [];
+    while ((match = timeRegex.exec(line)) !== null) {
+      const min = parseInt(match[1]);
+      const sec = parseInt(match[2]);
+      const ms = parseInt(match[3].padEnd(3, '0'));
+      timestamps.push(min * 60 + sec + ms / 1000);
+    }
+    const cleanText = line.replace(/\[\d{2}:\d{2}\.\d{2,3}\]/g, '').trim();
+    if (cleanText) {
+      timestamps.forEach(t => {
+        result.push({ time: t, text: cleanText });
+      });
+    }
+  });
+
+  result.sort((a, b) => a.time - b.time);
+  return result;
+}
+
+async function fetchAndRenderLyrics(title, artist) {
+  if (elements.lyricsLoadingPlaceholder) elements.lyricsLoadingPlaceholder.classList.remove('hidden');
+  if (elements.lyricsLinesWrapper) elements.lyricsLinesWrapper.innerHTML = '';
+  if (elements.lyricsStatusBadge) elements.lyricsStatusBadge.textContent = '⏳ Fetching Synced Lyrics...';
+
+  try {
+    const res = await fetch(`${API_BASE}/lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist || '')}`);
+    const data = await res.json();
+
+    if (data.syncedLyrics) {
+      state.syncedLyrics = parseLrcLyrics(data.syncedLyrics);
+      state.plainLyrics = data.plainLyrics;
+      if (elements.lyricsStatusBadge) elements.lyricsStatusBadge.textContent = '✨ Synced Lyrics Active';
+      renderSyncedLyricsList();
+    } else if (data.plainLyrics) {
+      state.syncedLyrics = [];
+      state.plainLyrics = data.plainLyrics;
+      if (elements.lyricsStatusBadge) elements.lyricsStatusBadge.textContent = '📄 Plain Lyrics Mode';
+      renderPlainLyricsList(data.plainLyrics);
+    } else {
+      state.syncedLyrics = [];
+      if (elements.lyricsStatusBadge) elements.lyricsStatusBadge.textContent = '🚫 No Lyrics Found';
+      if (elements.lyricsLinesWrapper) {
+        elements.lyricsLinesWrapper.innerHTML = `<div class="lyrics-line" style="color: var(--sleeve-text-muted);">No lyrics found for "${escapeHtml(title)}"</div>`;
+      }
+    }
+  } catch (err) {
+    console.error('Lyrics fetch error:', err);
+    if (elements.lyricsStatusBadge) elements.lyricsStatusBadge.textContent = '🚫 Lyrics Unavailable';
+  } finally {
+    if (elements.lyricsLoadingPlaceholder) elements.lyricsLoadingPlaceholder.classList.add('hidden');
+  }
+}
+
+function renderSyncedLyricsList() {
+  if (!elements.lyricsLinesWrapper) return;
+  elements.lyricsLinesWrapper.innerHTML = state.syncedLyrics.map((item, idx) => `
+    <div class="lyrics-line" id="lyricLine-${idx}" onclick="jumpToLyricTime(${item.time})">
+      ${escapeHtml(item.text)}
+    </div>
+  `).join('');
+}
+
+function renderPlainLyricsList(plainText) {
+  if (!elements.lyricsLinesWrapper) return;
+  const lines = plainText.split('\n').filter(l => l.trim().length > 0);
+  elements.lyricsLinesWrapper.innerHTML = lines.map(line => `
+    <div class="lyrics-line">${escapeHtml(line)}</div>
+  `).join('');
+}
+
+function jumpToLyricTime(timeSec) {
+  state.currentTime = timeSec;
+  updatePlaybackPosition();
+}
+
+function cueTrackOnVinyl(trackId) {
+  const tr = state.allTracks.find(t => t.id === trackId);
+  if (!tr) return;
+  state.currentCuedTrack = tr;
+
+  // Update Poster Titles (Grand Poster side)
+  if (elements.playerArtistName) elements.playerArtistName.textContent = tr.artist.toUpperCase();
+  if (elements.playerAlbumTitle) elements.playerAlbumTitle.textContent = (tr.album || 'SOUNDSORT MASTER').toUpperCase();
+  if (elements.playerTrackTitle) elements.playerTrackTitle.textContent = tr.title.toUpperCase();
+  if (elements.playerGenreTag) elements.playerGenreTag.textContent = `${tr.sub_genre || tr.main_genre || 'Hi-Fi Analog'} • 45 RPM`;
+
+  // Update Bottom Mini Player
+  if (elements.deckPlayerTitle) elements.deckPlayerTitle.textContent = tr.title;
+  if (elements.deckPlayerArtist) elements.deckPlayerArtist.textContent = tr.artist;
+
+  // Center Art
+  if (elements.vinylCenterArt && tr.thumbnail) {
+    elements.vinylCenterArt.style.backgroundImage = `url('${getSafeThumb(tr.thumbnail)}')`;
+  }
+
+  // If local track, configure audio stream
+  if (tr.is_local && elements.nativeAudioPlayer) {
+    elements.nativeAudioPlayer.src = `${API_BASE}/player/stream/${tr.id}`;
+    elements.nativeAudioPlayer.load();
+  }
+
+  // Reset time and fetch lyrics
+  state.currentTime = 0;
+  state.duration = tr.duration_seconds || 228;
+  updatePlaybackPosition();
+  fetchAndRenderLyrics(tr.title, tr.artist);
+
+  startVinylSpin();
+}
+
+function startVinylSpin() {
+  state.isVinylPlaying = true;
+  if (elements.turntableDisc) elements.turntableDisc.classList.add('spinning');
+  if (elements.turntableTonearm) elements.turntableTonearm.classList.add('engaged');
+
+  const pauseSvg = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+  if (elements.playIconSvg) elements.playIconSvg.innerHTML = pauseSvg;
+  if (elements.grandPlaySvg) elements.grandPlaySvg.innerHTML = pauseSvg;
+
+  if (state.currentCuedTrack?.is_local && elements.nativeAudioPlayer) {
+    elements.nativeAudioPlayer.play().catch(e => console.log('Audio autoplay prevented:', e));
+  }
+
+  // Start progress clock
+  if (state.playbackTimer) clearInterval(state.playbackTimer);
+  state.playbackTimer = setInterval(() => {
+    if (state.currentTime < state.duration) {
+      state.currentTime += 1;
+      updatePlaybackPosition();
+    } else {
+      playNextTrack();
+    }
+  }, 1000);
+}
+
+function stopVinylSpin() {
+  state.isVinylPlaying = false;
+  if (elements.turntableDisc) elements.turntableDisc.classList.remove('spinning');
+  if (elements.turntableTonearm) elements.turntableTonearm.classList.remove('engaged');
+
+  const playSvg = `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
+  if (elements.playIconSvg) elements.playIconSvg.innerHTML = playSvg;
+  if (elements.grandPlaySvg) elements.grandPlaySvg.innerHTML = playSvg;
+
+  if (elements.nativeAudioPlayer) {
+    elements.nativeAudioPlayer.pause();
+  }
+
+  if (state.playbackTimer) clearInterval(state.playbackTimer);
+}
+
+function toggleVinylPlayback() {
+  if (state.isVinylPlaying) {
+    stopVinylSpin();
+  } else {
+    if (!state.currentCuedTrack && state.tracks.length > 0) {
+      cueTrackOnVinyl(state.tracks[0].id);
+    } else {
+      startVinylSpin();
+    }
+  }
+}
+
+function playPrevTrack() {
+  if (!state.tracks || state.tracks.length === 0) return;
+  if (!state.currentCuedTrack) {
+    cueTrackOnVinyl(state.tracks[0].id);
+    return;
+  }
+  const currentIndex = state.tracks.findIndex(t => t.id === state.currentCuedTrack.id);
+  const prevIndex = currentIndex > 0 ? currentIndex - 1 : state.tracks.length - 1;
+  cueTrackOnVinyl(state.tracks[prevIndex].id);
+}
+
+function playNextTrack() {
+  if (!state.tracks || state.tracks.length === 0) return;
+  if (!state.currentCuedTrack) {
+    cueTrackOnVinyl(state.tracks[0].id);
+    return;
+  }
+  const currentIndex = state.tracks.findIndex(t => t.id === state.currentCuedTrack.id);
+  const nextIndex = currentIndex < state.tracks.length - 1 ? currentIndex + 1 : 0;
+  cueTrackOnVinyl(state.tracks[nextIndex].id);
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function updatePlaybackPosition() {
+  const cur = state.currentTime;
+  const tot = state.duration || 228;
+  const pct = Math.min(100, Math.max(0, (cur / tot) * 100));
+
+  if (elements.playerTimeCurrent) elements.playerTimeCurrent.textContent = formatTime(cur);
+  if (elements.playerTimeTotal) elements.playerTimeTotal.textContent = formatTime(tot);
+
+  if (elements.playerArcFill) elements.playerArcFill.style.width = `${pct}%`;
+  if (elements.playerArcDot) elements.playerArcDot.style.left = `${pct}%`;
+  if (elements.globalScrubberFill) elements.globalScrubberFill.style.width = `${pct}%`;
+
+  // Update Synced Lyrics Highlighting & Auto Scroll
+  if (state.syncedLyrics.length > 0) {
+    let activeIdx = -1;
+    for (let i = 0; i < state.syncedLyrics.length; i++) {
+      if (cur >= state.syncedLyrics[i].time) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+
+    if (activeIdx !== state.activeLyricsIndex) {
+      state.activeLyricsIndex = activeIdx;
+      document.querySelectorAll('.lyrics-line').forEach(el => el.classList.remove('active'));
+
+      if (activeIdx >= 0) {
+        const activeEl = document.getElementById(`lyricLine-${activeIdx}`);
+        if (activeEl) {
+          activeEl.classList.add('active');
+          activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+    }
+  }
 }
 
 // -------------------------------------------------------------
@@ -230,22 +542,17 @@ async function loadStatus() {
     const data = await res.json();
     state.systemStatus = data;
 
-    updateChip(elements.geminiStatusChip, data.gemini_configured, 'Gemini AI Ready', 'Gemini Not Set');
-    updateChip(elements.ytStatusChip, data.ytmusic_connected, 'YT Music Connected', 'YT Music Offline');
-
-    elements.statTotalTracks.textContent = data.total_tracks;
-    elements.statClassified.textContent = data.classified_tracks;
-    elements.statLocal.textContent = data.local_tracks || 0;
-    elements.statSynced.textContent = data.synced_tracks;
+    updateChip(elements.geminiStatusChip, data.gemini_configured, 'Gemini Ready', 'Gemini Off');
+    updateChip(elements.ytStatusChip, data.ytmusic_connected, 'YT Music Connected', 'YT Offline');
 
     elements.tabCountLibrary.textContent = data.total_tracks;
     elements.tabCountPlaylists.textContent = data.total_playlists || 0;
     elements.tabCountLocal.textContent = data.local_tracks || 0;
 
     const untaggedCount = Math.max(0, (data.local_tracks || 0) - (data.tagged_tracks || 0));
-    elements.localUntaggedCount.textContent = untaggedCount;
+    if (elements.localUntaggedCount) elements.localUntaggedCount.textContent = untaggedCount;
   } catch (err) {
-    console.error('Failed to load status:', err);
+    console.error('Status load error:', err);
   }
 }
 
@@ -256,30 +563,28 @@ async function loadSettings() {
     const data = await res.json();
     state.settings = data;
 
-    if (data.gemini_model) {
+    if (data.gemini_model && elements.selectGeminiModel) {
       elements.selectGeminiModel.value = data.gemini_model;
-      elements.activeModelTag.textContent = data.gemini_model;
     }
-    if (data.playlist_prefix) {
+    if (data.playlist_prefix && elements.inputPlaylistPrefix) {
       elements.inputPlaylistPrefix.value = data.playlist_prefix;
     }
-    if (data.download_directory) {
+    if (data.download_directory && elements.inputDownloadFolder) {
       elements.inputDownloadFolder.value = data.download_directory;
     }
-    if (data.masked_gemini_key) {
-      elements.inputGeminiKey.placeholder = `Current Key: ${data.masked_gemini_key}`;
+    if (data.masked_gemini_key && elements.inputGeminiKey) {
+      elements.inputGeminiKey.placeholder = `Current: ${data.masked_gemini_key}`;
     }
-
     updateYTAuthBadge(data.ytmusic_connected);
   } catch (err) {
-    console.error('Failed to load settings:', err);
+    console.error('Settings load error:', err);
   }
 }
 
 async function loadTracks() {
   try {
     const res = await fetch(`${API_BASE}/tracks`);
-    if (!res.ok) throw new Error('Failed to load tracks');
+    if (!res.ok) throw new Error('Failed loading tracks');
     const allTracks = await res.json();
     state.allTracks = allTracks;
 
@@ -289,9 +594,9 @@ async function loadTracks() {
     updateGenreFilterDropdowns();
     applyFiltersAndRender();
     renderLocalTracksTable();
+    renderDownloaderOnlineTable();
   } catch (err) {
     console.error('Error loading tracks:', err);
-    showToast('Failed to load tracks', 'error');
   }
 }
 
@@ -301,15 +606,16 @@ async function loadPlaylists() {
     if (!res.ok) return;
     const playlists = await res.json();
     state.playlists = playlists;
-    elements.tabCountPlaylists.textContent = playlists.length;
+    if (elements.tabCountPlaylists) elements.tabCountPlaylists.textContent = playlists.length;
     renderPlaylistsGrid();
   } catch (err) {
-    console.error('Error loading playlists:', err);
+    console.error('Playlists load error:', err);
   }
 }
 
 function updateGenreFilterDropdowns() {
   const mainSelect = elements.filterMainGenre;
+  if (!mainSelect) return;
   const currentMain = state.filters.mainGenre || '';
 
   mainSelect.innerHTML = '<option value="">All Main Genres</option>';
@@ -322,6 +628,7 @@ function updateGenreFilterDropdowns() {
   mainSelect.value = currentMain;
 
   const subSelect = elements.filterSubGenre;
+  if (!subSelect) return;
   const currentSub = state.filters.subGenre || '';
 
   let availableSubs = state.allTracks;
@@ -341,767 +648,7 @@ function updateGenreFilterDropdowns() {
 }
 
 // -------------------------------------------------------------
-// Tabs Navigation (Library, Playlists, Local Hub)
-// -------------------------------------------------------------
-function switchTab(tabName) {
-  state.activeTab = tabName;
-
-  elements.navTabLibrary.classList.toggle('active', tabName === 'library');
-  elements.navTabPlaylists.classList.toggle('active', tabName === 'playlists');
-  elements.navTabLocal.classList.toggle('active', tabName === 'local');
-
-  elements.sectionLibrary.classList.toggle('active', tabName === 'library');
-  elements.sectionPlaylists.classList.toggle('active', tabName === 'playlists');
-  elements.sectionLocal.classList.toggle('active', tabName === 'local');
-
-  if (tabName === 'playlists') {
-    renderPlaylistsGrid();
-  } else if (tabName === 'local') {
-    renderLocalTracksTable();
-  }
-}
-
-// -------------------------------------------------------------
-// Local Audio Scanner & Tagging
-// -------------------------------------------------------------
-function setScanPath(path) {
-  elements.inputLocalScanPath.value = path;
-  if (elements.modalInputScanPath) elements.modalInputScanPath.value = path;
-}
-
-async function handleScanLocalFolder(path) {
-  if (!path || !path.trim()) {
-    showToast('Please enter a valid directory path', 'error');
-    return;
-  }
-
-  elements.scanSpinner.classList.remove('hidden');
-  elements.btnTriggerScanPath.disabled = true;
-
-  try {
-    showToast(`Scanning folder ${path}...`, 'info');
-    const res = await fetch(`${API_BASE}/local/scan`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ directory_path: path.trim() })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Scan failed');
-
-    closeModal(elements.scanLocalModal);
-    showToast(data.message, 'success');
-    await refreshAll();
-    switchTab('local');
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    elements.scanSpinner.classList.add('hidden');
-    elements.btnTriggerScanPath.disabled = false;
-  }
-}
-
-async function handleTagSingleTrack(trackId) {
-  try {
-    showToast('Writing ID3 tags to local audio file...', 'info');
-    const res = await fetch(`${API_BASE}/local/tag-track/${trackId}`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed tagging track');
-
-    showToast(data.message, 'success');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleTagAllLocalTracks() {
-  elements.tagAllSpinner.classList.remove('hidden');
-  elements.btnTagAllLocalTracks.disabled = true;
-
-  try {
-    showToast('Writing ID3 / audio tags to all local files...', 'info');
-    const res = await fetch(`${API_BASE}/local/tag-all`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed tagging files');
-
-    showToast(data.message, 'success');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    elements.tagAllSpinner.classList.add('hidden');
-    elements.btnTagAllLocalTracks.disabled = false;
-  }
-}
-
-async function handleOrganizeLocalFiles() {
-  const targetDir = elements.inputOrganizeDestPath.value.trim();
-  const copyInsteadOfMove = elements.chkCopyInsteadOfMove.checked;
-
-  if (!targetDir) {
-    showToast('Please specify a target directory', 'error');
-    return;
-  }
-
-  if (!confirm(`Are you sure you want to organize local files into: ${targetDir}?`)) return;
-
-  try {
-    showToast('Organizing local audio files into genre subfolders...', 'info');
-    const res = await fetch(`${API_BASE}/local/organize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_directory: targetDir,
-        copy_instead_of_move: copyInsteadOfMove
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed organizing files');
-
-    showToast(`Organized ${data.moved_count} audio files into genre folders!`, 'success');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-function renderLocalTracksTable() {
-  const container = elements.localTracksListTableContainer;
-  const localTracks = state.allTracks.filter(t => t.is_local);
-
-  if (localTracks.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state" style="padding: 30px;">
-        <div class="empty-icon">💾</div>
-        <h3>No local audio files imported yet</h3>
-        <p>Use the folder scanner above to import music files from your computer or download online tracks to local disk.</p>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = `
-    <div class="table-wrapper">
-      <table class="tracks-table">
-        <thead>
-          <tr>
-            <th width="40"><input type="checkbox" onchange="toggleSelectAllTable(this)"></th>
-            <th>Title & Artist</th>
-            <th>AI Sub-genre</th>
-            <th>Local File Path</th>
-            <th>Tag Status</th>
-            <th width="140">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${localTracks.map(t => `
-            <tr>
-              <td><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
-              <td>
-                <div class="table-track-title">${escapeHtml(t.title)}</div>
-                <div class="table-track-artist">${escapeHtml(t.artist)}</div>
-              </td>
-              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || 'General')}</span></td>
-              <td><span class="file-path-badge" title="${escapeHtml(t.file_path || '')}">${escapeHtml(t.file_path || '-')}</span></td>
-              <td>
-                ${t.is_tagged ? `<span class="badge badge-tagged">🏷️ Tagged</span>` : `<span class="badge badge-draft">Untagged</span>`}
-              </td>
-              <td>
-                <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags to this audio file">
-                  🏷️ Write Tags
-                </button>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-}
-
-// -------------------------------------------------------------
-// Online Audio Downloader (yt-dlp with Auto-Tagging)
-// -------------------------------------------------------------
-async function handleDownloadSingleTrack(trackId, btnElement) {
-  if (btnElement) {
-    btnElement.disabled = true;
-    btnElement.innerHTML = `⏳ <span>Downloading...</span>`;
-  }
-  showToast('Downloading audio stream & embedding ID3 tags...', 'info');
-
-  try {
-    const res = await fetch(`${API_BASE}/downloader/download-track/${trackId}`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Download failed');
-
-    showToast(`Downloaded "${data.title}" to ${data.filename} with full ID3 tags!`, 'success');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    if (btnElement) {
-      btnElement.disabled = false;
-      btnElement.innerHTML = `⬇️ Download`;
-    }
-  }
-}
-
-async function handleDownloadSelectedTracks() {
-  const tids = Array.from(state.selectedTrackIds);
-  if (tids.length === 0) {
-    showToast('No tracks selected', 'error');
-    return;
-  }
-
-  showToast(`Downloading ${tids.length} selected tracks in background...`, 'info');
-  try {
-    const res = await fetch(`${API_BASE}/downloader/download-batch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ track_ids: tids })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Batch download failed');
-
-    showToast(`Successfully downloaded ${data.downloaded_count} songs with ID3 tags!`, 'success');
-    deselectAllTracks();
-    await refreshAll();
-    switchTab('local');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleDownloadPlaylist(playlistId) {
-  showToast('Downloading entire playlist into local folder with ID3 tags...', 'info');
-  try {
-    const res = await fetch(`${API_BASE}/downloader/download-playlist/${playlistId}`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Playlist download failed');
-
-    showToast(`Downloaded ${data.downloaded_count} songs into "${data.playlist_title}" folder!`, 'success');
-    await refreshAll();
-    switchTab('local');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-// -------------------------------------------------------------
-// Playlists Studio Actions
-// -------------------------------------------------------------
-function renderPlaylistsGrid() {
-  const grid = elements.playlistsGrid;
-  if (!state.playlists || state.playlists.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px;">
-        <div class="empty-icon">📑</div>
-        <h3>No Web Playlists Created Yet</h3>
-        <p>Create a custom playlist or click <strong>⚡ Auto-Create From Genres</strong> to automatically turn your library genres into playlists!</p>
-        <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
-          <button class="btn btn-primary" onclick="openCreatePlaylistModal()">➕ Create New Playlist</button>
-          <button class="btn btn-secondary" onclick="autoGeneratePlaylists()">⚡ Auto-Create From Genres</button>
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  grid.innerHTML = '';
-  state.playlists.forEach(p => {
-    const card = document.createElement('div');
-    card.className = `playlist-card ${p.is_synced ? 'is-synced' : ''}`;
-    
-    const trackCount = p.track_count !== undefined ? p.track_count : (p.track_ids ? p.track_ids.length : 0);
-    const syncBadgeHtml = p.is_synced && p.yt_playlist_url
-      ? `<a href="${p.yt_playlist_url}" target="_blank" class="badge-synced" title="Open playlist on YouTube Music">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          YT Music ↗
-        </a>`
-      : `<span class="badge-draft">Web Draft</span>`;
-
-    let previewHtml = '';
-    if (p.tracks_preview && p.tracks_preview.length > 0) {
-      previewHtml = `
-        <div class="playlist-mini-preview">
-          ${p.tracks_preview.map(t => `
-            <div class="playlist-mini-song">
-              <span class="bullet">&bull;</span>
-              <strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}
-            </div>
-          `).join('')}
-          ${trackCount > p.tracks_preview.length ? `<div style="font-size: 0.75rem; color: var(--text-muted); padding-top: 2px;">+ ${trackCount - p.tracks_preview.length} more songs</div>` : ''}
-        </div>
-      `;
-    } else {
-      previewHtml = `
-        <div class="playlist-mini-preview" style="justify-content: center; align-items: center; color: var(--text-muted); font-size: 0.75rem;">
-          Empty playlist (Add songs below)
-        </div>
-      `;
-    }
-
-    card.innerHTML = `
-      <div>
-        <div class="playlist-card-top">
-          <div>
-            <h3 class="playlist-card-title">${escapeHtml(p.title)}</h3>
-          </div>
-          ${syncBadgeHtml}
-        </div>
-        <p class="playlist-card-desc">${escapeHtml(p.description || 'Curated SoundSort Playlist')}</p>
-        
-        <div class="playlist-card-meta">
-          <span class="badge badge-subgenre">🎵 ${trackCount} songs</span>
-        </div>
-
-        ${previewHtml}
-      </div>
-
-      <div class="playlist-card-actions">
-        <button class="btn btn-secondary btn-sm" onclick="openPlaylistInspector('${p.id}')" title="Inspect songs in this playlist">
-          👁 View & Edit (${trackCount})
-        </button>
-        <button class="btn btn-ghost btn-sm" onclick="openAddGenreModal('${p.id}')" title="Add all songs from a genre into this playlist">
-          ➕ Add Genre...
-        </button>
-        <button class="btn-download-track" onclick="handleDownloadPlaylist('${p.id}')" title="Download all songs in this playlist to local folder with ID3 tags">
-          ⬇️ Download MP3s
-        </button>
-        <button class="btn-yt-export" onclick="exportPlaylistToYT('${p.id}', this)" title="Export to YouTube Music">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          <span>Export YT</span>
-        </button>
-        <button class="btn btn-ghost btn-sm" style="color: var(--accent-red); padding: 6px 8px;" onclick="deleteWebPlaylist('${p.id}')" title="Delete playlist" aria-label="Delete playlist">
-          🗑
-        </button>
-      </div>
-    `;
-
-    grid.appendChild(card);
-  });
-}
-
-function openCreatePlaylistModal() {
-  elements.inputNewPlaylistTitle.value = '';
-  elements.inputNewPlaylistDesc.value = '';
-  
-  const select = elements.selectNewPlaylistGenre;
-  select.innerHTML = '<option value="">-- Start Empty (Add songs manually later) --</option>';
-  
-  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
-  genres.forEach(g => {
-    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
-      const opt = document.createElement('option');
-      opt.value = g;
-      opt.textContent = `All songs from: ${g}`;
-      select.appendChild(opt);
-    }
-  });
-
-  openModal(elements.createPlaylistModal);
-}
-
-async function handleConfirmCreatePlaylist() {
-  const title = elements.inputNewPlaylistTitle.value.trim();
-  const desc = elements.inputNewPlaylistDesc.value.trim();
-  const prefillGenre = elements.selectNewPlaylistGenre.value;
-
-  if (!title) {
-    showToast('Please enter a playlist title', 'error');
-    return;
-  }
-
-  let trackIds = [];
-  if (prefillGenre) {
-    const targetName = prefillGenre.toLowerCase();
-    trackIds = state.allTracks
-      .filter(t => (t.assigned_playlist || '').toLowerCase() === targetName || (t.sub_genre || '').toLowerCase() === targetName || (t.main_genre || '').toLowerCase() === targetName)
-      .map(t => t.id);
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/playlists`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description: desc, track_ids: trackIds })
-    });
-    if (!res.ok) throw new Error('Failed to create playlist');
-    
-    closeModal(elements.createPlaylistModal);
-    showToast(`Created playlist "${title}" with ${trackIds.length} songs!`, 'success');
-    await loadPlaylists();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function deleteWebPlaylist(playlistId) {
-  if (!confirm('Are you sure you want to delete this web playlist?')) return;
-  try {
-    const res = await fetch(`${API_BASE}/playlists/${playlistId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to delete playlist');
-    showToast('Playlist deleted', 'info');
-    await loadPlaylists();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function autoGeneratePlaylists() {
-  try {
-    showToast('⚡ Generating playlists from all genres...', 'info');
-    const res = await fetch(`${API_BASE}/playlists/auto-generate-from-genres`, { method: 'POST' });
-    if (!res.ok) throw new Error('Failed to auto-generate playlists');
-    const data = await res.json();
-    showToast(data.message, 'success');
-    await loadPlaylists();
-    await loadStatus();
-    switchTab('playlists');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-function openAddGenreModal(playlistId) {
-  state.targetPlaylistForAdd = playlistId;
-  const p = state.playlists.find(x => x.id === playlistId);
-  elements.addGenreToPlaylistDesc.textContent = `Select a genre from your library to dump all its songs into "${p ? p.title : 'Playlist'}":`;
-
-  const select = elements.selectGenreToDump;
-  select.innerHTML = '';
-  
-  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
-  genres.forEach(g => {
-    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
-      const count = state.allTracks.filter(t => (t.assigned_playlist || '').toLowerCase() === g.toLowerCase() || (t.sub_genre || '').toLowerCase() === g.toLowerCase() || (t.main_genre || '').toLowerCase() === g.toLowerCase()).length;
-      const opt = document.createElement('option');
-      opt.value = g;
-      opt.textContent = `${g} (${count} songs)`;
-      select.appendChild(opt);
-    }
-  });
-
-  openModal(elements.addGenreToPlaylistModal);
-}
-
-async function handleConfirmAddGenreToPlaylist() {
-  const playlistId = state.targetPlaylistForAdd;
-  const genreName = elements.selectGenreToDump.value;
-  if (!playlistId || !genreName) return;
-
-  try {
-    const res = await fetch(`${API_BASE}/playlists/${playlistId}/add-genre`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ genre_name: genreName })
-    });
-    if (!res.ok) throw new Error('Failed to add genre to playlist');
-    const data = await res.json();
-    
-    closeModal(elements.addGenreToPlaylistModal);
-    showToast(`Added ${data.added_count} songs from "${genreName}"! Total: ${data.total_tracks} songs.`, 'success');
-    await loadPlaylists();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function exportPlaylistToYT(playlistId, btnElement) {
-  if (btnElement) {
-    btnElement.disabled = true;
-    btnElement.innerHTML = `⏳ <span>Exporting...</span>`;
-  }
-  
-  showToast('🚀 Syncing playlist to YouTube Music in real-time...', 'info');
-
-  try {
-    const res = await fetch(`${API_BASE}/playlists/${playlistId}/export-yt`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Export failed');
-
-    showToast(`🎉 Playlist "${data.title}" successfully exported to YouTube Music! (${data.added_count} songs)`, 'success');
-    await loadPlaylists();
-    await loadStatus();
-  } catch (err) {
-    console.error('Export error:', err);
-    showToast(err.message, 'error');
-  } finally {
-    if (btnElement) {
-      btnElement.disabled = false;
-      btnElement.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-        <span>Export YT</span>
-      `;
-    }
-  }
-}
-
-async function exportAllPlaylistsToYT() {
-  if (!confirm('Export all web playlists to YouTube Music now?')) return;
-  const btn = elements.btnExportAllPlaylists;
-  btn.disabled = true;
-  btn.innerHTML = `<span>⏳ Exporting All Playlists...</span>`;
-
-  try {
-    showToast('🚀 Exporting all playlists to YouTube Music...', 'info');
-    const res = await fetch(`${API_BASE}/playlists/export-all-yt`, { method: 'POST' });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Bulk export failed');
-
-    showToast(`All playlists exported to YouTube Music!`, 'success');
-    await loadPlaylists();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-      <span>Export All to YouTube Music</span>
-    `;
-  }
-}
-
-// -------------------------------------------------------------
-// Playlist Inspector Modal
-// -------------------------------------------------------------
-async function openPlaylistInspector(playlistId) {
-  try {
-    const res = await fetch(`${API_BASE}/playlists/${playlistId}`);
-    if (!res.ok) throw new Error('Could not load playlist detail');
-    const p = await res.json();
-    state.currentInspectingPlaylist = p;
-
-    elements.inspectorPlaylistTitle.textContent = p.title;
-    elements.inspectorPlaylistDesc.textContent = p.description || 'No description';
-    elements.inspectorTrackCount.textContent = `${p.track_count} tracks`;
-    
-    if (p.is_synced && p.yt_playlist_url) {
-      elements.inspectorSyncedBadge.classList.remove('hidden');
-      elements.inspectorYtLink.classList.remove('hidden');
-      elements.inspectorYtLink.href = p.yt_playlist_url;
-    } else {
-      elements.inspectorSyncedBadge.classList.add('hidden');
-      elements.inspectorYtLink.classList.add('hidden');
-    }
-
-    elements.inspectorSearch.value = '';
-    renderInspectorTracksList(p.tracks || []);
-    openModal(elements.playlistInspectorModal);
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-function renderInspectorTracksList(tracksList) {
-  const container = elements.inspectorTracksList;
-  const q = elements.inspectorSearch.value.trim().toLowerCase();
-
-  let filtered = tracksList;
-  if (q) {
-    filtered = filtered.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
-  }
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">No songs found in this playlist</div>`;
-    return;
-  }
-
-  container.innerHTML = filtered.map((t, idx) => `
-    <div class="inspector-track-item">
-      <div class="inspector-track-left">
-        <span class="inspector-track-idx">${idx + 1}</span>
-        <img class="inspector-track-thumb" src="${getSafeThumb(t.thumbnail)}" alt="cover">
-        <div class="inspector-track-info">
-          <div class="inspector-track-title">${escapeHtml(t.title)}</div>
-          <div class="inspector-track-artist">${escapeHtml(t.artist)} &bull; <span style="color: var(--accent-cyan);">${escapeHtml(t.sub_genre || t.main_genre || '')}</span></div>
-        </div>
-      </div>
-      <div class="inspector-track-right">
-        ${t.is_local 
-          ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
-          : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3">⬇️ Download</button>`
-        }
-        <button class="btn-remove-track" onclick="removeTrackFromCurrentPlaylist('${t.id}')" title="Remove song from playlist" aria-label="Remove song from playlist">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
-
-async function removeTrackFromCurrentPlaylist(trackId) {
-  if (!state.currentInspectingPlaylist) return;
-  const pid = state.currentInspectingPlaylist.id;
-  try {
-    const res = await fetch(`${API_BASE}/playlists/${pid}/tracks/${trackId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Failed to remove track');
-    
-    await openPlaylistInspector(pid);
-    await loadPlaylists();
-    showToast('Song removed from playlist', 'info');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-// -------------------------------------------------------------
-// Multi-Selection & Floating Bar Actions
-// -------------------------------------------------------------
-function toggleTrackSelection(trackId) {
-  if (state.selectedTrackIds.has(trackId)) {
-    state.selectedTrackIds.delete(trackId);
-  } else {
-    state.selectedTrackIds.add(trackId);
-  }
-  updateSelectionBar();
-  updateCheckboxesState();
-}
-
-function selectAllFilteredTracks() {
-  state.tracks.forEach(t => state.selectedTrackIds.add(t.id));
-  updateSelectionBar();
-  updateCheckboxesState();
-}
-
-function deselectAllTracks() {
-  state.selectedTrackIds.clear();
-  updateSelectionBar();
-  updateCheckboxesState();
-}
-
-function updateSelectionBar() {
-  const bar = elements.selectionActionBar;
-  const count = state.selectedTrackIds.size;
-  elements.selectedCountBadge.textContent = count;
-  if (count > 0) {
-    bar.classList.remove('hidden');
-  } else {
-    bar.classList.add('hidden');
-  }
-}
-
-function updateCheckboxesState() {
-  document.querySelectorAll('.track-select-checkbox').forEach(cb => {
-    const tid = cb.getAttribute('data-track-id');
-    cb.checked = state.selectedTrackIds.has(tid);
-  });
-}
-
-function openAddToPlaylistModal(specificTrackId = null) {
-  const tids = specificTrackId ? [specificTrackId] : Array.from(state.selectedTrackIds);
-  if (tids.length === 0) {
-    showToast('No tracks selected', 'error');
-    return;
-  }
-
-  elements.addToPlaylistSubtext.textContent = `Select which playlist to add ${tids.length} selected song(s) to:`;
-  elements.inputQuickNewPlaylistTitle.value = '';
-
-  const select = elements.selectTargetPlaylist;
-  select.innerHTML = '';
-  if (state.playlists.length === 0) {
-    select.innerHTML = '<option value="">-- No playlists yet (type below to create) --</option>';
-  } else {
-    state.playlists.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = `${p.title} (${p.track_count || (p.track_ids ? p.track_ids.length : 0)} songs)`;
-      select.appendChild(opt);
-    });
-  }
-
-  state._pendingAddTrackIds = tids;
-  openModal(elements.addToPlaylistModal);
-}
-
-async function handleConfirmAddToPlaylist() {
-  const tids = state._pendingAddTrackIds || [];
-  if (tids.length === 0) return;
-
-  const quickTitle = elements.inputQuickNewPlaylistTitle.value.trim();
-  let targetPlaylistId = elements.selectTargetPlaylist.value;
-
-  try {
-    if (quickTitle) {
-      const res = await fetch(`${API_BASE}/playlists`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: quickTitle, track_ids: tids })
-      });
-      if (!res.ok) throw new Error('Failed to create playlist');
-      const newP = await res.json();
-      targetPlaylistId = newP.id;
-      showToast(`Created playlist "${quickTitle}" with ${tids.length} songs!`, 'success');
-    } else if (targetPlaylistId) {
-      const res = await fetch(`${API_BASE}/playlists/${targetPlaylistId}/tracks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ track_ids: tids })
-      });
-      if (!res.ok) throw new Error('Failed to add tracks');
-      showToast(`Added ${tids.length} songs to playlist!`, 'success');
-    } else {
-      showToast('Please select a playlist or enter a new name', 'error');
-      return;
-    }
-
-    deselectAllTracks();
-    closeModal(elements.addToPlaylistModal);
-    await loadPlaylists();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleTagSelectedTracks() {
-  const tids = Array.from(state.selectedTrackIds);
-  if (tids.length === 0) {
-    showToast('No tracks selected', 'error');
-    return;
-  }
-
-  try {
-    showToast(`Writing tags to ${tids.length} selected local files...`, 'info');
-    const res = await fetch(`${API_BASE}/local/tag-all`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ track_ids: tids })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed tagging');
-
-    showToast(data.message, 'success');
-    deselectAllTracks();
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-function quickCreatePlaylistFromCurrentFilter() {
-  if (!state.tracks || state.tracks.length === 0) {
-    showToast('No tracks currently match your filter', 'error');
-    return;
-  }
-  const defaultTitle = state.filters.subGenre || state.filters.mainGenre || 'My Custom Playlist';
-  elements.inputNewPlaylistTitle.value = defaultTitle;
-  elements.inputNewPlaylistDesc.value = `Created from filtered tracks (${state.tracks.length} songs)`;
-  elements.selectNewPlaylistGenre.value = '';
-  
-  openModal(elements.createPlaylistModal);
-}
-
-// -------------------------------------------------------------
-// Track Library Filtering & Rendering
+// Track Filtering & Rendering (Analyzer Module)
 // -------------------------------------------------------------
 function applyFiltersAndRender() {
   let filtered = [...state.allTracks];
@@ -1114,27 +661,17 @@ function applyFiltersAndRender() {
     filtered = filtered.filter(t => 
       t.title.toLowerCase().includes(q) ||
       t.artist.toLowerCase().includes(q) ||
-      (t.album && t.album.toLowerCase().includes(q)) ||
       (t.sub_genre && t.sub_genre.toLowerCase().includes(q)) ||
       (t.main_genre && t.main_genre.toLowerCase().includes(q)) ||
-      (t.vibe && t.vibe.toLowerCase().includes(q)) ||
-      (t.file_path && t.file_path.toLowerCase().includes(q))
+      (t.vibe && t.vibe.toLowerCase().includes(q))
     );
   }
 
-  if (src === 'local') {
-    filtered = filtered.filter(t => t.is_local);
-  } else if (src === 'online') {
-    filtered = filtered.filter(t => !t.is_local);
-  }
+  if (src === 'local') filtered = filtered.filter(t => t.is_local);
+  else if (src === 'online') filtered = filtered.filter(t => !t.is_local);
 
-  if (mg) {
-    filtered = filtered.filter(t => (t.main_genre || '').toLowerCase() === mg);
-  }
-
-  if (sg) {
-    filtered = filtered.filter(t => (t.sub_genre || '').toLowerCase() === sg);
-  }
+  if (mg) filtered = filtered.filter(t => (t.main_genre || '').toLowerCase() === mg);
+  if (sg) filtered = filtered.filter(t => (t.sub_genre || '').toLowerCase() === sg);
 
   state.tracks = filtered;
   renderStudioContent();
@@ -1142,12 +679,14 @@ function applyFiltersAndRender() {
 
 function renderStudioContent() {
   const container = elements.studioContent;
+  if (!container) return;
+
   if (!state.tracks || state.tracks.length === 0) {
     container.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🎵</div>
+      <div class="empty-state" style="padding: 30px; text-align: center;">
+        <div style="font-size: 2rem;">🎵</div>
         <h3>No matching tracks found</h3>
-        <p>Try clearing your search, source, or genre filters.</p>
+        <p>Try clearing filters or importing tracks above.</p>
       </div>
     `;
     return;
@@ -1158,80 +697,6 @@ function renderStudioContent() {
   } else {
     renderTableView(container);
   }
-}
-
-let isVinylPlaying = false;
-let currentCuedTrack = null;
-
-function cueTrackOnVinyl(trackId) {
-  const tr = state.allTracks.find(t => t.id === trackId);
-  if (!tr) return;
-  currentCuedTrack = tr;
-
-  if (elements.activePlayingTitle) elements.activePlayingTitle.textContent = tr.title;
-  if (elements.activePlayingArtist) elements.activePlayingArtist.textContent = tr.artist;
-  if (elements.activePlayingGenre) elements.activePlayingGenre.textContent = tr.sub_genre || tr.main_genre || 'Vinyl Track';
-
-  if (elements.deckPlayerTitle) elements.deckPlayerTitle.textContent = tr.title;
-  if (elements.deckPlayerArtist) elements.deckPlayerArtist.textContent = tr.artist;
-
-  if (elements.vinylCenterArt && tr.thumbnail) {
-    elements.vinylCenterArt.style.backgroundImage = `url('${getSafeThumb(tr.thumbnail)}')`;
-  }
-
-  startVinylSpin();
-}
-
-function startVinylSpin() {
-  isVinylPlaying = true;
-  if (elements.turntableDisc) elements.turntableDisc.classList.add('spinning');
-  if (elements.turntableTonearm) elements.turntableTonearm.classList.add('engaged');
-  if (elements.playIconSvg) {
-    elements.playIconSvg.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
-  }
-}
-
-function stopVinylSpin() {
-  isVinylPlaying = false;
-  if (elements.turntableDisc) elements.turntableDisc.classList.remove('spinning');
-  if (elements.turntableTonearm) elements.turntableTonearm.classList.remove('engaged');
-  if (elements.playIconSvg) {
-    elements.playIconSvg.innerHTML = `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
-  }
-}
-
-function toggleVinylPlayback() {
-  if (isVinylPlaying) {
-    stopVinylSpin();
-  } else {
-    if (!currentCuedTrack && state.tracks.length > 0) {
-      cueTrackOnVinyl(state.tracks[0].id);
-    } else {
-      startVinylSpin();
-    }
-  }
-}
-
-function playPrevTrack() {
-  if (!state.tracks || state.tracks.length === 0) return;
-  if (!currentCuedTrack) {
-    cueTrackOnVinyl(state.tracks[0].id);
-    return;
-  }
-  const currentIndex = state.tracks.findIndex(t => t.id === currentCuedTrack.id);
-  const prevIndex = currentIndex > 0 ? currentIndex - 1 : state.tracks.length - 1;
-  cueTrackOnVinyl(state.tracks[prevIndex].id);
-}
-
-function playNextTrack() {
-  if (!state.tracks || state.tracks.length === 0) return;
-  if (!currentCuedTrack) {
-    cueTrackOnVinyl(state.tracks[0].id);
-    return;
-  }
-  const currentIndex = state.tracks.findIndex(t => t.id === currentCuedTrack.id);
-  const nextIndex = currentIndex < state.tracks.length - 1 ? currentIndex + 1 : 0;
-  cueTrackOnVinyl(state.tracks[nextIndex].id);
 }
 
 function renderGroupedGridView(container) {
@@ -1271,23 +736,21 @@ function renderGroupedGridView(container) {
       </div>
       <div class="group-card-tracks">
         ${list.map((t, idx) => `
-          <div class="track-row-compact" onclick="cueTrackOnVinyl('${t.id}')" style="cursor: pointer;">
+          <div class="track-row-compact" onclick="cueTrackOnVinyl('${t.id}'); switchModule('player');" style="cursor: pointer;" title="Click to play on Vinyl Deck">
             <input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleTrackSelection('${t.id}')">
             <span style="font-family: var(--font-brand); font-weight: 800; font-size: 0.75rem; color: var(--sleeve-text-muted); width: 18px;">${String(idx + 1).padStart(2, '0')}</span>
             <img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover">
             <div class="track-info-mini">
-              <span class="track-title-mini" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
-              <span class="track-artist-mini" title="${escapeHtml(t.artist)}">${escapeHtml(t.artist)}</span>
+              <span class="track-title-mini">${escapeHtml(t.title)}</span>
+              <span class="track-artist-mini">${escapeHtml(t.artist)}</span>
             </div>
             <div style="display: flex; gap: 4px; align-items: center;" onclick="event.stopPropagation();">
               ${t.is_local 
-                ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>
-                   <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
-                : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3 with ID3 tags">⬇️</button>`
+                ? `<span class="badge badge-local">💾 Local</span>
+                   <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')">🏷️ Tag</button>` 
+                : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)">⬇️</button>`
               }
-              <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')" title="Add to specific playlist">
-                + PL
-              </button>
+              <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">+ PL</button>
             </div>
           </div>
         `).join('')}
@@ -1306,7 +769,7 @@ function renderTableView(container) {
       <table class="tracks-table">
         <thead>
           <tr>
-            <th width="40"><input type="checkbox" id="chkSelectAllTable" onchange="toggleSelectAllTable(this)"></th>
+            <th width="40"><input type="checkbox" onchange="toggleSelectAllTable(this)"></th>
             <th width="30">#</th>
             <th width="50">Cover</th>
             <th>Title & Artist</th>
@@ -1319,7 +782,7 @@ function renderTableView(container) {
         </thead>
         <tbody>
           ${state.tracks.map((t, idx) => `
-            <tr onclick="cueTrackOnVinyl('${t.id}')" style="cursor: pointer;">
+            <tr onclick="cueTrackOnVinyl('${t.id}'); switchModule('player');" style="cursor: pointer;">
               <td onclick="event.stopPropagation();"><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
               <td style="font-family: var(--font-brand); font-weight: 800; font-size: 0.75rem; color: var(--sleeve-text-muted);">${String(idx + 1).padStart(2, '0')}</td>
               <td><img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover"></td>
@@ -1328,9 +791,7 @@ function renderTableView(container) {
                 <div class="table-track-artist" style="color: var(--sleeve-text-muted); font-size: 0.75rem;">${escapeHtml(t.artist)}</div>
               </td>
               <td>
-                ${t.is_local 
-                  ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>` 
-                  : `<span class="badge badge-online">🌐 Online</span>`}
+                ${t.is_local ? `<span class="badge badge-local">💾 Local</span>` : `<span class="badge badge-online">🌐 Online</span>`}
               </td>
               <td><span class="badge badge-subgenre">${escapeHtml(t.main_genre || 'Other')}</span></td>
               <td><span class="badge badge-subgenre" style="background: #ffffff; border: 1px solid var(--sleeve-border);">${escapeHtml(t.sub_genre || 'General')}</span></td>
@@ -1338,11 +799,9 @@ function renderTableView(container) {
               <td onclick="event.stopPropagation();">
                 <div style="display: flex; gap: 6px; align-items: center;">
                   ${t.is_local 
-                    ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
-                    : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3">⬇️ DL</button>`}
-                  <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">
-                    ➕ PL
-                  </button>
+                    ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')">🏷️ Tag</button>` 
+                    : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)">⬇️ DL</button>`}
+                  <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">➕ PL</button>
                 </div>
               </td>
             </tr>
@@ -1355,9 +814,733 @@ function renderTableView(container) {
 
 function toggleSelectAllTable(cb) {
   if (cb.checked) {
-    selectAllFilteredTracks();
+    state.tracks.forEach(t => state.selectedTrackIds.add(t.id));
   } else {
+    state.selectedTrackIds.clear();
+  }
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+// -------------------------------------------------------------
+// Local Audio Scanner & Tagging (Module 3)
+// -------------------------------------------------------------
+function setScanPath(path) {
+  if (elements.inputLocalScanPath) elements.inputLocalScanPath.value = path;
+  if (elements.modalInputScanPath) elements.modalInputScanPath.value = path;
+}
+
+async function handleScanLocalFolder(path) {
+  if (!path || !path.trim()) {
+    showToast('Please enter a valid directory path', 'error');
+    return;
+  }
+
+  if (elements.scanSpinner) elements.scanSpinner.classList.remove('hidden');
+  if (elements.btnTriggerScanPath) elements.btnTriggerScanPath.disabled = true;
+
+  try {
+    showToast(`Scanning folder ${path}...`, 'info');
+    const res = await fetch(`${API_BASE}/local/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ directory_path: path.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Scan failed');
+
+    closeModal(elements.scanLocalModal);
+    showToast(data.message, 'success');
+    await refreshAll();
+    switchModule('tagger');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (elements.scanSpinner) elements.scanSpinner.classList.add('hidden');
+    if (elements.btnTriggerScanPath) elements.btnTriggerScanPath.disabled = false;
+  }
+}
+
+async function handleTagSingleTrack(trackId) {
+  try {
+    showToast('Writing ID3 tags to local audio file...', 'info');
+    const res = await fetch(`${API_BASE}/local/tag-track/${trackId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging track');
+
+    showToast(data.message, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleTagAllLocalTracks() {
+  if (elements.tagAllSpinner) elements.tagAllSpinner.classList.remove('hidden');
+  if (elements.btnTagAllLocalTracks) elements.btnTagAllLocalTracks.disabled = true;
+
+  try {
+    showToast('Writing ID3 tags to all local files...', 'info');
+    const res = await fetch(`${API_BASE}/local/tag-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging files');
+
+    showToast(data.message, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (elements.tagAllSpinner) elements.tagAllSpinner.classList.add('hidden');
+    if (elements.btnTagAllLocalTracks) elements.btnTagAllLocalTracks.disabled = false;
+  }
+}
+
+async function handleOrganizeLocalFiles() {
+  const targetDir = elements.inputOrganizeDestPath.value.trim();
+  if (!targetDir) {
+    showToast('Please specify a target directory', 'error');
+    return;
+  }
+
+  if (!confirm(`Organize local files into genre subfolders at: ${targetDir}?`)) return;
+
+  try {
+    showToast('Organizing audio files into genre subfolders...', 'info');
+    const res = await fetch(`${API_BASE}/local/organize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_directory: targetDir, copy_instead_of_move: true })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed organizing files');
+
+    showToast(`Organized ${data.moved_count} files into genre folders!`, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function renderLocalTracksTable() {
+  const container = elements.localTracksListTableContainer;
+  if (!container) return;
+  const localTracks = state.allTracks.filter(t => t.is_local);
+
+  if (localTracks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 20px; text-align: center;">
+        <div style="font-size: 1.8rem;">💾</div>
+        <h3>No local audio files scanned yet</h3>
+        <p>Use the scanner above to scan your computer's music folder.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="tracks-table">
+        <thead>
+          <tr>
+            <th width="40"><input type="checkbox" onchange="toggleSelectAllTable(this)"></th>
+            <th>Title & Artist</th>
+            <th>AI Sub-genre</th>
+            <th>File Path</th>
+            <th>Tag Status</th>
+            <th width="120">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${localTracks.map(t => `
+            <tr>
+              <td><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
+              <td>
+                <div style="font-weight: 700;">${escapeHtml(t.title)}</div>
+                <div style="color: var(--sleeve-text-muted); font-size: 0.75rem;">${escapeHtml(t.artist)}</div>
+              </td>
+              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || 'General')}</span></td>
+              <td><span style="font-family: monospace; font-size: 0.75rem; color: var(--sleeve-text-muted);">${escapeHtml(t.file_path || '-')}</span></td>
+              <td>${t.is_tagged ? `<span class="badge badge-tagged">🏷️ Tagged</span>` : `<span class="badge badge-draft">Untagged</span>`}</td>
+              <td><button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')">🏷️ Tag File</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// Downloader Module (Module 4)
+// -------------------------------------------------------------
+async function handleDownloadSingleTrack(trackId, btnElement) {
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.innerHTML = `⏳ DL...`;
+  }
+  showToast('Downloading audio stream & embedding tags...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-track/${trackId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Download failed');
+
+    showToast(`Downloaded "${data.title}" to ${data.filename} with full ID3 tags!`, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = `⬇️ DL`;
+    }
+  }
+}
+
+async function handleDownloadSelectedTracks() {
+  const tids = Array.from(state.selectedTrackIds);
+  if (tids.length === 0) {
+    showToast('No tracks selected', 'error');
+    return;
+  }
+
+  showToast(`Downloading ${tids.length} selected tracks...`, 'info');
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ track_ids: tids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Batch download failed');
+
+    showToast(`Successfully downloaded ${data.downloaded_count} songs with ID3 tags!`, 'success');
     deselectAllTracks();
+    await refreshAll();
+    switchModule('tagger');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleQuickDownloadFromInput() {
+  const raw = elements.inputSingleDownloadUrl.value.trim();
+  if (!raw) {
+    showToast('Please enter a song name or YouTube link', 'error');
+    return;
+  }
+
+  elements.quickDownloadSpinner.classList.remove('hidden');
+  elements.btnTriggerQuickDownload.disabled = true;
+
+  try {
+    showToast('Searching & downloading audio stream with ID3 tags...', 'info');
+    // First import text
+    const impRes = await fetch(`${API_BASE}/tracks/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input_text: raw })
+    });
+    const impData = await impRes.json();
+    await loadTracks();
+
+    if (state.allTracks.length > 0) {
+      const target = state.allTracks[state.allTracks.length - 1];
+      const dlRes = await fetch(`${API_BASE}/downloader/download-track/${target.id}`, { method: 'POST' });
+      const dlData = await dlRes.json();
+      showToast(`Downloaded "${dlData.title}" successfully with ID3 tags!`, 'success');
+      elements.inputSingleDownloadUrl.value = '';
+      await refreshAll();
+      cueTrackOnVinyl(target.id);
+      switchModule('player');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    elements.quickDownloadSpinner.classList.add('hidden');
+    elements.btnTriggerQuickDownload.disabled = false;
+  }
+}
+
+function renderDownloaderOnlineTable() {
+  const container = elements.downloaderOnlineTracksContainer;
+  if (!container) return;
+  const onlineTracks = state.allTracks.filter(t => !t.is_local);
+
+  if (onlineTracks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 20px; text-align: center;">
+        <div style="font-size: 1.8rem;">🌐</div>
+        <h3>No online tracks in library</h3>
+        <p>Import songs using the AI Analyzer module or use the Quick Download bar above.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="tracks-table">
+        <thead>
+          <tr>
+            <th>Cover</th>
+            <th>Title & Artist</th>
+            <th>Genre / Vibe</th>
+            <th width="120">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${onlineTracks.map(t => `
+            <tr>
+              <td><img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover"></td>
+              <td>
+                <div style="font-weight: 700;">${escapeHtml(t.title)}</div>
+                <div style="color: var(--sleeve-text-muted); font-size: 0.75rem;">${escapeHtml(t.artist)}</div>
+              </td>
+              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || 'Other')}</span></td>
+              <td><button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)">⬇️ Download MP3</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// Playlists Studio (Module 5)
+// -------------------------------------------------------------
+function renderPlaylistsGrid() {
+  const grid = elements.playlistsGrid;
+  if (!grid) return;
+
+  if (!state.playlists || state.playlists.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center;">
+        <div style="font-size: 2rem;">📑</div>
+        <h3>No Web Playlists Created Yet</h3>
+        <p>Create a custom playlist or auto-generate playlists from your AI genres!</p>
+        <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+          <button class="btn-analog-dark" onclick="openCreatePlaylistModal()">➕ Create Playlist</button>
+          <button class="btn-sleeve-btn" onclick="autoGeneratePlaylists()">⚡ Auto-From Genres</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = state.playlists.map(p => {
+    const trackCount = p.track_count !== undefined ? p.track_count : (p.track_ids ? p.track_ids.length : 0);
+    const syncBadgeHtml = p.is_synced && p.yt_playlist_url
+      ? `<a href="${p.yt_playlist_url}" target="_blank" class="badge-synced" style="text-decoration: none; color: #0284c7; font-weight: 700; font-size: 0.75rem;">YT Music ↗</a>`
+      : `<span class="badge badge-draft">Draft</span>`;
+
+    return `
+      <div class="playlist-card">
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <h3 class="playlist-card-title">${escapeHtml(p.title)}</h3>
+            ${syncBadgeHtml}
+          </div>
+          <p class="playlist-card-desc">${escapeHtml(p.description || 'SoundSort Curated')}</p>
+          <div style="margin-bottom: 10px;"><span class="badge badge-subgenre">🎵 ${trackCount} tracks</span></div>
+        </div>
+        <div class="playlist-card-actions">
+          <button class="btn-sleeve-btn btn-sm" onclick="openPlaylistInspector('${p.id}')">👁 View (${trackCount})</button>
+          <button class="btn-sleeve-btn btn-sm" onclick="openAddGenreModal('${p.id}')">➕ Add Genre</button>
+          <button class="btn-download-track" onclick="handleDownloadPlaylist('${p.id}')">⬇️ DL MP3s</button>
+          <button class="btn-analog-red btn-sm" onclick="exportPlaylistToYT('${p.id}', this)">🚀 Export YT</button>
+          <button class="btn-sleeve-danger" style="padding: 4px 8px;" onclick="deleteWebPlaylist('${p.id}')">🗑</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function handleDownloadPlaylist(playlistId) {
+  showToast('Downloading entire playlist to local folder with tags...', 'info');
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-playlist/${playlistId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Playlist download failed');
+
+    showToast(`Downloaded ${data.downloaded_count} songs into "${data.playlist_title}" folder!`, 'success');
+    await refreshAll();
+    switchModule('tagger');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function exportPlaylistToYT(playlistId, btnElement) {
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.textContent = 'Exporting...';
+  }
+  showToast('🚀 Syncing playlist to YouTube Music...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}/export-yt`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Export failed');
+
+    showToast(`🎉 Playlist "${data.title}" exported to YouTube Music! (${data.added_count} songs)`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.textContent = '🚀 Export YT';
+    }
+  }
+}
+
+async function exportAllPlaylistsToYT() {
+  if (!confirm('Export all web playlists to YouTube Music now?')) return;
+  const btn = elements.btnExportAllPlaylists;
+  btn.disabled = true;
+  btn.textContent = 'Exporting All...';
+
+  try {
+    showToast('Exporting all playlists to YouTube Music...', 'info');
+    const res = await fetch(`${API_BASE}/playlists/export-all-yt`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Bulk export failed');
+
+    showToast('All playlists exported to YouTube Music!', 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg><span>Export All to YT</span>`;
+  }
+}
+
+function openCreatePlaylistModal() {
+  elements.inputNewPlaylistTitle.value = '';
+  elements.inputNewPlaylistDesc.value = '';
+  const select = elements.selectNewPlaylistGenre;
+  select.innerHTML = '<option value="">-- Start Empty --</option>';
+
+  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
+  genres.forEach(g => {
+    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = `All songs from: ${g}`;
+      select.appendChild(opt);
+    }
+  });
+
+  openModal(elements.createPlaylistModal);
+}
+
+async function handleConfirmCreatePlaylist() {
+  const title = elements.inputNewPlaylistTitle.value.trim();
+  const desc = elements.inputNewPlaylistDesc.value.trim();
+  const prefillGenre = elements.selectNewPlaylistGenre.value;
+
+  if (!title) {
+    showToast('Please enter a playlist title', 'error');
+    return;
+  }
+
+  let trackIds = [];
+  if (prefillGenre) {
+    const targetName = prefillGenre.toLowerCase();
+    trackIds = state.allTracks
+      .filter(t => (t.assigned_playlist || '').toLowerCase() === targetName || (t.sub_genre || '').toLowerCase() === targetName || (t.main_genre || '').toLowerCase() === targetName)
+      .map(t => t.id);
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description: desc, track_ids: trackIds })
+    });
+    if (!res.ok) throw new Error('Failed to create playlist');
+
+    closeModal(elements.createPlaylistModal);
+    showToast(`Created playlist "${title}" with ${trackIds.length} songs!`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteWebPlaylist(playlistId) {
+  if (!confirm('Are you sure you want to delete this playlist?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete playlist');
+    showToast('Playlist deleted', 'info');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function autoGeneratePlaylists() {
+  try {
+    showToast('⚡ Generating playlists from all genres...', 'info');
+    const res = await fetch(`${API_BASE}/playlists/auto-generate-from-genres`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to auto-generate playlists');
+    const data = await res.json();
+    showToast(data.message, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openAddGenreModal(playlistId) {
+  state.targetPlaylistForAdd = playlistId;
+  const p = state.playlists.find(x => x.id === playlistId);
+  if (elements.addGenreToPlaylistDesc) {
+    elements.addGenreToPlaylistDesc.textContent = `Select a genre from your library to add into "${p ? p.title : 'Playlist'}":`;
+  }
+
+  const select = elements.selectGenreToDump;
+  select.innerHTML = '';
+  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
+  genres.forEach(g => {
+    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
+      const count = state.allTracks.filter(t => (t.assigned_playlist || '').toLowerCase() === g.toLowerCase() || (t.sub_genre || '').toLowerCase() === g.toLowerCase() || (t.main_genre || '').toLowerCase() === g.toLowerCase()).length;
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = `${g} (${count} tracks)`;
+      select.appendChild(opt);
+    }
+  });
+
+  openModal(elements.addGenreToPlaylistModal);
+}
+
+async function handleConfirmAddGenreToPlaylist() {
+  const playlistId = state.targetPlaylistForAdd;
+  const genreName = elements.selectGenreToDump.value;
+  if (!playlistId || !genreName) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}/add-genre`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genre_name: genreName })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed adding genre');
+
+    closeModal(elements.addGenreToPlaylistModal);
+    showToast(`Added ${data.added_count} tracks from "${genreName}"! Total: ${data.total_tracks}`, 'success');
+    await loadPlaylists();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openPlaylistInspector(playlistId) {
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}`);
+    if (!res.ok) throw new Error('Could not load playlist detail');
+    const p = await res.json();
+    state.currentInspectingPlaylist = p;
+
+    elements.inspectorPlaylistTitle.textContent = p.title;
+    elements.inspectorPlaylistDesc.textContent = p.description || 'No description';
+    elements.inspectorTrackCount.textContent = `${p.track_count} tracks`;
+
+    if (p.is_synced && p.yt_playlist_url) {
+      elements.inspectorSyncedBadge.classList.remove('hidden');
+      elements.inspectorYtLink.classList.remove('hidden');
+      elements.inspectorYtLink.href = p.yt_playlist_url;
+    } else {
+      elements.inspectorSyncedBadge.classList.add('hidden');
+      elements.inspectorYtLink.classList.add('hidden');
+    }
+
+    elements.inspectorSearch.value = '';
+    renderInspectorTracksList(p.tracks || []);
+    openModal(elements.playlistInspectorModal);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function renderInspectorTracksList(tracksList) {
+  const container = elements.inspectorTracksList;
+  const q = elements.inspectorSearch.value.trim().toLowerCase();
+
+  let filtered = tracksList;
+  if (q) {
+    filtered = filtered.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--sleeve-text-muted);">No songs found in playlist</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map((t, idx) => `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--sleeve-border);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-family: var(--font-brand); font-weight: 800; font-size: 0.75rem; color: var(--sleeve-text-muted); width: 18px;">${idx + 1}</span>
+        <img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover">
+        <div>
+          <div style="font-weight: 700; font-size: 0.85rem;">${escapeHtml(t.title)}</div>
+          <div style="font-size: 0.75rem; color: var(--sleeve-text-muted);">${escapeHtml(t.artist)} &bull; <span style="color: var(--accent-red); font-weight: 700;">${escapeHtml(t.sub_genre || t.main_genre || '')}</span></div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 6px; align-items: center;">
+        <button class="btn-sleeve-ghost" onclick="cueTrackOnVinyl('${t.id}'); closeModal(elements.playlistInspectorModal); switchModule('player');" title="Play on Vinyl">🎵 Play</button>
+        <button class="btn-sleeve-danger" style="padding: 4px 8px;" onclick="removeTrackFromCurrentPlaylist('${t.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function removeTrackFromCurrentPlaylist(trackId) {
+  if (!state.currentInspectingPlaylist) return;
+  const pid = state.currentInspectingPlaylist.id;
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${pid}/tracks/${trackId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to remove track');
+    await openPlaylistInspector(pid);
+    await loadPlaylists();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// Multi-Selection & Floating Bar Actions
+// -------------------------------------------------------------
+function toggleTrackSelection(trackId) {
+  if (state.selectedTrackIds.has(trackId)) {
+    state.selectedTrackIds.delete(trackId);
+  } else {
+    state.selectedTrackIds.add(trackId);
+  }
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+function deselectAllTracks() {
+  state.selectedTrackIds.clear();
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+function updateSelectionBar() {
+  const bar = elements.selectionActionBar;
+  const count = state.selectedTrackIds.size;
+  if (elements.selectedCountBadge) elements.selectedCountBadge.textContent = count;
+  if (count > 0) {
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function updateCheckboxesState() {
+  document.querySelectorAll('.track-select-checkbox').forEach(cb => {
+    const tid = cb.getAttribute('data-track-id');
+    cb.checked = state.selectedTrackIds.has(tid);
+  });
+}
+
+function openAddToPlaylistModal(specificTrackId = null) {
+  const tids = specificTrackId ? [specificTrackId] : Array.from(state.selectedTrackIds);
+  if (tids.length === 0) {
+    showToast('No tracks selected', 'error');
+    return;
+  }
+
+  elements.addToPlaylistSubtext.textContent = `Select which playlist to add ${tids.length} track(s) to:`;
+  elements.inputQuickNewPlaylistTitle.value = '';
+
+  const select = elements.selectTargetPlaylist;
+  select.innerHTML = '';
+  if (state.playlists.length === 0) {
+    select.innerHTML = '<option value="">-- No playlists yet (type name below) --</option>';
+  } else {
+    state.playlists.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.title} (${p.track_count || (p.track_ids ? p.track_ids.length : 0)} tracks)`;
+      select.appendChild(opt);
+    });
+  }
+
+  state._pendingAddTrackIds = tids;
+  openModal(elements.addToPlaylistModal);
+}
+
+async function handleConfirmAddToPlaylist() {
+  const tids = state._pendingAddTrackIds || [];
+  if (tids.length === 0) return;
+
+  const quickTitle = elements.inputQuickNewPlaylistTitle.value.trim();
+  let targetPlaylistId = elements.selectTargetPlaylist.value;
+
+  try {
+    if (quickTitle) {
+      const res = await fetch(`${API_BASE}/playlists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: quickTitle, track_ids: tids })
+      });
+      if (!res.ok) throw new Error('Failed to create playlist');
+      showToast(`Created playlist "${quickTitle}" with ${tids.length} songs!`, 'success');
+    } else if (targetPlaylistId) {
+      const res = await fetch(`${API_BASE}/playlists/${targetPlaylistId}/tracks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track_ids: tids })
+      });
+      if (!res.ok) throw new Error('Failed to add tracks');
+      showToast(`Added ${tids.length} songs to playlist!`, 'success');
+    }
+
+    deselectAllTracks();
+    closeModal(elements.addToPlaylistModal);
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleTagSelectedTracks() {
+  const tids = Array.from(state.selectedTrackIds);
+  if (tids.length === 0) return;
+
+  try {
+    showToast(`Writing tags to ${tids.length} local files...`, 'info');
+    const res = await fetch(`${API_BASE}/local/tag-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ track_ids: tids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging');
+
+    showToast(data.message, 'success');
+    deselectAllTracks();
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
@@ -1367,13 +1550,13 @@ function quickCreatePlaylistForGenre(genreName) {
     .map(t => t.id);
 
   elements.inputNewPlaylistTitle.value = genreName;
-  elements.inputNewPlaylistDesc.value = `Curated ${genreName} collection (${matchingIds.length} songs)`;
+  elements.inputNewPlaylistDesc.value = `Curated ${genreName} collection (${matchingIds.length} tracks)`;
   elements.selectNewPlaylistGenre.value = genreName;
   openModal(elements.createPlaylistModal);
 }
 
 // -------------------------------------------------------------
-// Importers & AI Classification
+// Importers & AI Classification (Module 2)
 // -------------------------------------------------------------
 async function handleImportText() {
   const text = elements.importInput.value.trim();
@@ -1395,7 +1578,7 @@ async function handleImportText() {
     if (!res.ok) throw new Error(data.detail || 'Import failed');
 
     elements.importInput.value = '';
-    showToast(`Successfully extracted ${data.total_extracted} tracks (${data.newly_added} newly added)!`, 'success');
+    showToast(`Successfully extracted ${data.total_extracted} tracks (${data.newly_added} new)!`, 'success');
     await refreshAll();
   } catch (err) {
     showToast(err.message, 'error');
@@ -1452,7 +1635,7 @@ async function handleImportYtLikes() {
 }
 
 async function handleClassifyTracks() {
-  if (!state.settings?.has_gemini_key) {
+  if (!state.settings?.has_gemini_key && !state.systemStatus?.gemini_configured) {
     showToast('Please configure your Gemini API Key in Settings first', 'error');
     openModal(elements.settingsModal);
     return;
@@ -1495,7 +1678,7 @@ async function handleClassifyTracks() {
           try {
             const event = JSON.parse(line.substring(6));
             if (event.type === 'start') {
-              elements.aiProgressLabel.textContent = `Analyzing ${event.total} songs in batches...`;
+              elements.aiProgressLabel.textContent = `Analyzing ${event.total} tracks in batches...`;
             } else if (event.type === 'progress') {
               elements.aiProgressPercent.textContent = `${event.percent}%`;
               elements.aiProgressBarFill.style.transform = `scaleX(${event.percent / 100})`;
@@ -1505,8 +1688,6 @@ async function handleClassifyTracks() {
               elements.aiProgressBarFill.style.transform = 'scaleX(1)';
               elements.aiProgressPercent.textContent = '100%';
               showToast('Classification completed successfully!', 'success');
-            } else if (event.type === 'error') {
-              showToast(`Error: ${event.message}`, 'error');
             }
           } catch (e) {
             console.error('SSE JSON parse error:', e);
@@ -1521,76 +1702,12 @@ async function handleClassifyTracks() {
   } finally {
     elements.btnClassify.disabled = false;
     elements.classifySpinner.classList.add('hidden');
-    setTimeout(() => {
-      elements.aiProgressWrapper.classList.add('hidden');
-    }, 4000);
+    setTimeout(() => elements.aiProgressWrapper.classList.add('hidden'), 4000);
   }
 }
 
 // -------------------------------------------------------------
-// Settings & Auth Modal
-// -------------------------------------------------------------
-async function handleSaveSettings() {
-  const geminiKey = elements.inputGeminiKey.value.trim();
-  const geminiModel = elements.selectGeminiModel.value;
-  const prefix = elements.inputPlaylistPrefix.value.trim();
-  const dlFolder = elements.inputDownloadFolder.value.trim();
-
-  try {
-    const res = await fetch(`${API_BASE}/settings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        gemini_api_key: geminiKey || undefined,
-        gemini_model: geminiModel,
-        playlist_prefix: prefix,
-        download_directory: dlFolder || undefined
-      })
-    });
-    if (!res.ok) throw new Error('Failed to save settings');
-
-    closeModal(elements.settingsModal);
-    showToast('Settings saved successfully!', 'success');
-    await loadSettings();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleConnectYT() {
-  const rawHeaders = elements.inputYtHeaders.value.trim();
-  if (!rawHeaders) {
-    showToast('Please paste your YouTube Music browser request headers or cookie', 'error');
-    return;
-  }
-
-  elements.btnConnectYT.disabled = true;
-  elements.btnConnectYT.textContent = 'Connecting...';
-
-  try {
-    const res = await fetch(`${API_BASE}/ytmusic/setup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ headers_raw: rawHeaders })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Connection failed');
-
-    showToast('Successfully connected to YouTube Music!', 'success');
-    elements.inputYtHeaders.value = '';
-    await loadSettings();
-    await loadStatus();
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    elements.btnConnectYT.disabled = false;
-    elements.btnConnectYT.textContent = 'Connect YouTube Music';
-  }
-}
-
-// -------------------------------------------------------------
-// Merge Subgenres Modal
+// Modals Handlers: Merge & Custom Playlist
 // -------------------------------------------------------------
 function openMergeModal() {
   const select = elements.selectMergeSource;
@@ -1619,16 +1736,11 @@ function openMergeModal() {
 }
 
 async function handleConfirmMerge() {
-  const source = elements.selectMergeSource ? elements.selectMergeSource.value : '';
-  const target = elements.inputMergeTarget ? elements.inputMergeTarget.value.trim() : '';
+  const source = elements.selectMergeSource.value;
+  const target = elements.inputMergeTarget.value.trim();
 
   if (!source || !target) {
     showToast('Please select source and target sub-genres', 'error');
-    return;
-  }
-
-  if (source.toLowerCase() === target.toLowerCase()) {
-    showToast('Source and target cannot be identical', 'error');
     return;
   }
 
@@ -1649,20 +1761,10 @@ async function handleConfirmMerge() {
   }
 }
 
-// -------------------------------------------------------------
-// Custom Playlist Builder Modal
-// -------------------------------------------------------------
 function openCustomPlaylistModal() {
-  if (!elements.customPlaylistModal) return;
+  if (elements.inputCustomPlaylistTitle) elements.inputCustomPlaylistTitle.value = '';
+  if (elements.inputCustomVibeQuery) elements.inputCustomVibeQuery.value = '';
 
-  if (elements.inputCustomPlaylistTitle) {
-    elements.inputCustomPlaylistTitle.value = '';
-  }
-  if (elements.inputCustomVibeQuery) {
-    elements.inputCustomVibeQuery.value = '';
-  }
-
-  // Populate genres
   if (elements.selectCustomMainGenre) {
     elements.selectCustomMainGenre.innerHTML = '<option value="">All Main Genres</option>';
     state.allMainGenres.forEach(g => {
@@ -1693,40 +1795,25 @@ function updateCustomPlaylistPreview() {
   const vibe = elements.inputCustomVibeQuery ? elements.inputCustomVibeQuery.value.trim().toLowerCase() : '';
 
   let matched = [...state.allTracks];
-  if (mg) {
-    matched = matched.filter(t => (t.main_genre || '').toLowerCase() === mg);
-  }
-  if (sg) {
-    matched = matched.filter(t => (t.sub_genre || '').toLowerCase() === sg);
-  }
-  if (vibe) {
-    matched = matched.filter(t => (t.vibe || '').toLowerCase().includes(vibe) || (t.sub_genre || '').toLowerCase().includes(vibe));
-  }
+  if (mg) matched = matched.filter(t => (t.main_genre || '').toLowerCase() === mg);
+  if (sg) matched = matched.filter(t => (t.sub_genre || '').toLowerCase() === sg);
+  if (vibe) matched = matched.filter(t => (t.vibe || '').toLowerCase().includes(vibe) || (t.sub_genre || '').toLowerCase().includes(vibe));
 
   state._matchedCustomTracks = matched;
 
-  if (elements.customMatchedCount) {
-    elements.customMatchedCount.textContent = matched.length;
-  }
-
+  if (elements.customMatchedCount) elements.customMatchedCount.textContent = matched.length;
   if (elements.customMatchedList) {
-    if (matched.length === 0) {
-      elements.customMatchedList.innerHTML = `<div style="text-align: center; color: var(--sleeve-text-muted); padding: 12px; font-size: 0.85rem;">No matching songs found with current filters</div>`;
-    } else {
-      elements.customMatchedList.innerHTML = matched.slice(0, 50).map((t, idx) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--sleeve-border); font-size: 0.8rem;">
-          <div>
-            <strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}
-          </div>
-          <span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || '')}</span>
-        </div>
-      `).join('') + (matched.length > 50 ? `<div style="text-align: center; color: var(--sleeve-text-muted); padding-top: 6px; font-size: 0.75rem;">+ ${matched.length - 50} more matching tracks</div>` : '');
-    }
+    elements.customMatchedList.innerHTML = matched.slice(0, 40).map(t => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--sleeve-border); font-size: 0.8rem;">
+        <div><strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}</div>
+        <span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || '')}</span>
+      </div>
+    `).join('');
   }
 }
 
 async function handleCreateCustomPlaylist() {
-  const title = elements.inputCustomPlaylistTitle ? elements.inputCustomPlaylistTitle.value.trim() : '';
+  const title = elements.inputCustomPlaylistTitle.value.trim();
   const matched = state._matchedCustomTracks || [];
 
   if (!title) {
@@ -1735,12 +1822,9 @@ async function handleCreateCustomPlaylist() {
   }
 
   if (matched.length === 0) {
-    showToast('No tracks matched the selected criteria', 'error');
+    showToast('No tracks matched criteria', 'error');
     return;
   }
-
-  if (elements.customPlaylistSpinner) elements.customPlaylistSpinner.classList.remove('hidden');
-  if (elements.btnCreateCustomPlaylist) elements.btnCreateCustomPlaylist.disabled = true;
 
   try {
     const trackIds = matched.map(t => t.id);
@@ -1753,19 +1837,77 @@ async function handleCreateCustomPlaylist() {
         track_ids: trackIds
       })
     });
-    const newP = await res.json();
-    if (!res.ok) throw new Error(newP.detail || 'Failed to create playlist');
+    if (!res.ok) throw new Error('Failed to create playlist');
 
     closeModal(elements.customPlaylistModal);
     showToast(`Created playlist "${title}" with ${trackIds.length} tracks!`, 'success');
     await loadPlaylists();
     await loadStatus();
-    switchTab('playlists');
+    switchModule('playlists');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// Settings & Auth Modal
+// -------------------------------------------------------------
+async function handleSaveSettings() {
+  const geminiKey = elements.inputGeminiKey.value.trim();
+  const geminiModel = elements.selectGeminiModel.value;
+  const prefix = elements.inputPlaylistPrefix.value.trim();
+  const dlFolder = elements.inputDownloadFolder.value.trim();
+
+  try {
+    const res = await fetch(`${API_BASE}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        gemini_api_key: geminiKey || undefined,
+        gemini_model: geminiModel,
+        playlist_prefix: prefix,
+        download_directory: dlFolder || undefined
+      })
+    });
+    if (!res.ok) throw new Error('Failed saving settings');
+
+    closeModal(elements.settingsModal);
+    showToast('Settings saved successfully!', 'success');
+    await loadSettings();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleConnectYT() {
+  const rawHeaders = elements.inputYtHeaders.value.trim();
+  if (!rawHeaders) {
+    showToast('Please paste your YouTube Music headers or cookie', 'error');
+    return;
+  }
+
+  elements.btnConnectYT.disabled = true;
+  elements.btnConnectYT.textContent = 'Connecting...';
+
+  try {
+    const res = await fetch(`${API_BASE}/ytmusic/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ headers_raw: rawHeaders })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Connection failed');
+
+    showToast('Successfully connected to YouTube Music!', 'success');
+    elements.inputYtHeaders.value = '';
+    await loadSettings();
+    await loadStatus();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    if (elements.customPlaylistSpinner) elements.customPlaylistSpinner.classList.add('hidden');
-    if (elements.btnCreateCustomPlaylist) elements.btnCreateCustomPlaylist.disabled = false;
+    elements.btnConnectYT.disabled = false;
+    elements.btnConnectYT.textContent = 'Connect YouTube Music';
   }
 }
 
@@ -1773,12 +1915,40 @@ async function handleCreateCustomPlaylist() {
 // Event Listeners Setup
 // -------------------------------------------------------------
 function setupEventListeners() {
-  // Navigation Tabs
-  if (elements.navTabLibrary) elements.navTabLibrary.addEventListener('click', () => switchTab('library'));
-  if (elements.navTabPlaylists) elements.navTabPlaylists.addEventListener('click', () => switchTab('playlists'));
-  if (elements.navTabLocal) elements.navTabLocal.addEventListener('click', () => switchTab('local'));
+  // Mega App 5-Module Navigation
+  if (elements.navTabPlayer) elements.navTabPlayer.addEventListener('click', () => switchModule('player'));
+  if (elements.navTabAnalyzer) elements.navTabAnalyzer.addEventListener('click', () => switchModule('analyzer'));
+  if (elements.navTabTagger) elements.navTabTagger.addEventListener('click', () => switchModule('tagger'));
+  if (elements.navTabDownloader) elements.navTabDownloader.addEventListener('click', () => switchModule('downloader'));
+  if (elements.navTabPlaylists) elements.navTabPlaylists.addEventListener('click', () => switchModule('playlists'));
 
-  // Importer
+  // Player & Synced Lyrics Controls
+  if (elements.btnGrandPlayToggle) elements.btnGrandPlayToggle.addEventListener('click', toggleVinylPlayback);
+  if (elements.btnPlayerPlayToggle) elements.btnPlayerPlayToggle.addEventListener('click', toggleVinylPlayback);
+  if (elements.btnPlayerPrev) elements.btnPlayerPrev.addEventListener('click', playPrevTrack);
+  if (elements.btnPlayerNext) elements.btnPlayerNext.addEventListener('click', playNextTrack);
+  if (elements.btnBottomJumpToPlayer) elements.btnBottomJumpToPlayer.addEventListener('click', () => switchModule('player'));
+  if (elements.btnRefreshLyrics) {
+    elements.btnRefreshLyrics.addEventListener('click', () => {
+      if (state.currentCuedTrack) fetchAndRenderLyrics(state.currentCuedTrack.title, state.currentCuedTrack.artist);
+    });
+  }
+
+  // Pitch Knob interaction (Rotates and toggles RPM)
+  if (elements.knobPitch) {
+    elements.knobPitch.addEventListener('click', () => {
+      if (state.pitchRpm === 33) state.pitchRpm = 45;
+      else if (state.pitchRpm === 45) state.pitchRpm = 78;
+      else state.pitchRpm = 33;
+
+      const deg = state.pitchRpm === 33 ? 0 : (state.pitchRpm === 45 ? 45 : 90);
+      elements.knobPitch.style.transform = `rotate(${deg}deg)`;
+      if (elements.pitchValueLabel) elements.pitchValueLabel.textContent = `${state.pitchRpm} RPM`;
+      showToast(`Pitch speed set to ${state.pitchRpm} RPM`, 'info');
+    });
+  }
+
+  // Importer & AI Classifier (Module 2)
   if (elements.btnImport) elements.btnImport.addEventListener('click', handleImportText);
   if (elements.btnUploadCsv && elements.fileUploadInput) {
     elements.btnUploadCsv.addEventListener('click', () => elements.fileUploadInput.click());
@@ -1800,16 +1970,6 @@ function setupEventListeners() {
       await refreshAll();
     });
   }
-
-  // Local Scanner Modal & Actions
-  if (elements.btnOpenScanLocalModal) elements.btnOpenScanLocalModal.addEventListener('click', () => openModal(elements.scanLocalModal));
-  if (elements.btnConfirmScanLocal) elements.btnConfirmScanLocal.addEventListener('click', () => handleScanLocalFolder(elements.modalInputScanPath.value));
-  if (elements.btnTriggerScanPath) elements.btnTriggerScanPath.addEventListener('click', () => handleScanLocalFolder(elements.inputLocalScanPath.value));
-  if (elements.btnTagAllLocalTracks) elements.btnTagAllLocalTracks.addEventListener('click', handleTagAllLocalTracks);
-  if (elements.btnOrganizeLocalFiles) elements.btnOrganizeLocalFiles.addEventListener('click', handleOrganizeLocalFiles);
-  if (elements.btnRefreshLocalList) elements.btnRefreshLocalList.addEventListener('click', () => renderLocalTracksTable());
-
-  // AI Classifier
   if (elements.btnClassify) elements.btnClassify.addEventListener('click', handleClassifyTracks);
 
   // Filters & Search
@@ -1867,14 +2027,22 @@ function setupEventListeners() {
   if (elements.selectCustomSubGenre) elements.selectCustomSubGenre.addEventListener('change', updateCustomPlaylistPreview);
   if (elements.inputCustomVibeQuery) elements.inputCustomVibeQuery.addEventListener('input', updateCustomPlaylistPreview);
 
-  // Playlists Studio Buttons
+  // Tagger Module Actions (Module 3)
+  if (elements.btnTriggerScanPath) elements.btnTriggerScanPath.addEventListener('click', () => handleScanLocalFolder(elements.inputLocalScanPath.value));
+  if (elements.btnTagAllLocalTracks) elements.btnTagAllLocalTracks.addEventListener('click', handleTagAllLocalTracks);
+  if (elements.btnOrganizeLocalFiles) elements.btnOrganizeLocalFiles.addEventListener('click', handleOrganizeLocalFiles);
+  if (elements.btnRefreshLocalList) elements.btnRefreshLocalList.addEventListener('click', () => renderLocalTracksTable());
+
+  // Downloader Module Actions (Module 4)
+  if (elements.btnTriggerQuickDownload) elements.btnTriggerQuickDownload.addEventListener('click', handleQuickDownloadFromInput);
+
+  // Playlists Studio Buttons (Module 5)
   if (elements.btnOpenCreatePlaylistModal) elements.btnOpenCreatePlaylistModal.addEventListener('click', openCreatePlaylistModal);
   if (elements.btnConfirmCreatePlaylist) elements.btnConfirmCreatePlaylist.addEventListener('click', handleConfirmCreatePlaylist);
   if (elements.btnAutoGeneratePlaylists) elements.btnAutoGeneratePlaylists.addEventListener('click', autoGeneratePlaylists);
   if (elements.btnExportAllPlaylists) elements.btnExportAllPlaylists.addEventListener('click', exportAllPlaylistsToYT);
   if (elements.btnConfirmAddGenreToPlaylist) elements.btnConfirmAddGenreToPlaylist.addEventListener('click', handleConfirmAddGenreToPlaylist);
   if (elements.btnConfirmAddToPlaylist) elements.btnConfirmAddToPlaylist.addEventListener('click', handleConfirmAddToPlaylist);
-  if (elements.btnQuickCreatePlaylistFromFilter) elements.btnQuickCreatePlaylistFromFilter.addEventListener('click', quickCreatePlaylistFromCurrentFilter);
 
   // Selection Bar Actions
   if (elements.btnAddSelectedToPlaylist) elements.btnAddSelectedToPlaylist.addEventListener('click', () => openAddToPlaylistModal());
@@ -1882,45 +2050,26 @@ function setupEventListeners() {
   if (elements.btnTagSelectedTracks) elements.btnTagSelectedTracks.addEventListener('click', handleTagSelectedTracks);
   if (elements.btnDeselectAllTracks) elements.btnDeselectAllTracks.addEventListener('click', deselectAllTracks);
 
-  // Inspector Search & Actions
+  // Inspector
   if (elements.inspectorSearch) {
     elements.inspectorSearch.addEventListener('input', () => {
-      if (state.currentInspectingPlaylist) {
-        renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
-      }
+      if (state.currentInspectingPlaylist) renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
     });
   }
   if (elements.btnInspectorDownloadAll) {
     elements.btnInspectorDownloadAll.addEventListener('click', () => {
-      if (state.currentInspectingPlaylist) {
-        handleDownloadPlaylist(state.currentInspectingPlaylist.id);
-      }
+      if (state.currentInspectingPlaylist) handleDownloadPlaylist(state.currentInspectingPlaylist.id);
     });
   }
   if (elements.btnInspectorAddGenre) {
     elements.btnInspectorAddGenre.addEventListener('click', () => {
-      if (state.currentInspectingPlaylist) {
-        openAddGenreModal(state.currentInspectingPlaylist.id);
-      }
+      if (state.currentInspectingPlaylist) openAddGenreModal(state.currentInspectingPlaylist.id);
     });
   }
   if (elements.btnInspectorExportYT) {
     elements.btnInspectorExportYT.addEventListener('click', () => {
-      if (state.currentInspectingPlaylist) {
-        exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
-      }
+      if (state.currentInspectingPlaylist) exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
     });
-  }
-
-  // Vinyl Deck Controls
-  if (elements.btnPlayerPlayToggle) {
-    elements.btnPlayerPlayToggle.addEventListener('click', toggleVinylPlayback);
-  }
-  if (elements.btnPlayerPrev) {
-    elements.btnPlayerPrev.addEventListener('click', playPrevTrack);
-  }
-  if (elements.btnPlayerNext) {
-    elements.btnPlayerNext.addEventListener('click', playNextTrack);
   }
 
   // Settings
@@ -1971,13 +2120,13 @@ function showToast(message, type = 'info') {
 function updateChip(chipEl, isOnline, textOnline, textOffline) {
   if (!chipEl) return;
   const dot = chipEl.querySelector('.status-dot');
-  const label = chipEl.querySelector('.chip-label');
+  const label = chipEl.querySelector('span:last-child');
   if (isOnline) {
-    dot.className = 'status-dot dot-online';
-    label.textContent = textOnline;
+    if (dot) dot.className = 'status-led led-green';
+    if (label) label.textContent = textOnline;
   } else {
-    dot.className = 'status-dot dot-offline';
-    label.textContent = textOffline;
+    if (dot) dot.className = 'status-led led-red';
+    if (label) label.textContent = textOffline;
   }
 }
 
@@ -1985,9 +2134,9 @@ function updateYTAuthBadge(isConnected) {
   const badge = elements.ytAuthIndicator;
   if (!badge) return;
   if (isConnected) {
-    badge.innerHTML = `<span class="auth-status-badge badge-connected">Connected &bull; Ready to Sync</span>`;
+    badge.innerHTML = `<span class="auth-status-badge badge-connected" style="color: #059669; font-weight: 700;">Connected &bull; Ready to Sync</span>`;
   } else {
-    badge.innerHTML = `<span class="auth-status-badge badge-disconnected">Not Connected</span>`;
+    badge.innerHTML = `<span class="auth-status-badge badge-disconnected" style="color: #e53935; font-weight: 700;">Not Connected</span>`;
   }
 }
 

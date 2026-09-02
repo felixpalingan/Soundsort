@@ -7,7 +7,7 @@
   <meta name="description" content="Aggregate music tracks from Spotify, SoundCloud, and YouTube, classify them into granular sub-genres with AI, fine-tune them visually, and sync directly to YouTube Music.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,7 +16,7 @@
     <!-- Top Navigation Header -->
     <header class="app-header">
       <div class="brand">
-        <div class="logo-icon">
+        <div class="logo-icon" aria-hidden="true">
           <span class="pulse-bar bar-1"></span>
           <span class="pulse-bar bar-2"></span>
           <span class="pulse-bar bar-3"></span>
@@ -29,14 +29,14 @@
       </div>
 
       <!-- Main Navigation Tabs -->
-      <nav class="main-nav-tabs">
-        <button id="navTabLibrary" class="nav-tab-btn active" data-tab="library">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+      <nav class="main-nav-tabs" aria-label="Main Navigation">
+        <button id="navTabLibrary" class="nav-tab-btn active" data-tab="library" aria-selected="true" role="tab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
           <span>Track Library</span>
           <span class="tab-count-badge" id="tabCountLibrary">0</span>
         </button>
-        <button id="navTabPlaylists" class="nav-tab-btn" data-tab="playlists">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15V6"></path><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path></svg>
+        <button id="navTabPlaylists" class="nav-tab-btn" data-tab="playlists" aria-selected="false" role="tab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15V6"></path><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path></svg>
           <span>My Web Playlists</span>
           <span class="tab-count-badge badge-glow" id="tabCountPlaylists">0</span>
         </button>
@@ -52,8 +52,8 @@
           <span class="status-dot dot-offline"></span>
           <span class="chip-label">YT Music</span>
         </div>
-        <button id="btnOpenSettings" class="btn btn-secondary btn-icon" title="Settings & Auth">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <button id="btnOpenSettings" class="btn btn-secondary btn-icon" title="Settings & Auth" aria-label="Open settings and authentication modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           <span>Settings</span>
         </button>
       </div>
@@ -296,7 +296,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal">
         <div class="modal-header">
           <h3>Settings & API Keys</h3>
-          <button class="modal-close" data-close="settingsModal">&times;</button>
+          <button class="modal-close" data-close="settingsModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           
@@ -373,7 +373,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal">
         <div class="modal-header">
           <h3>➕ Create New Web Playlist</h3>
-          <button class="modal-close" data-close="createPlaylistModal">&times;</button>
+          <button class="modal-close" data-close="createPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc">Create an empty playlist or pre-populate it with a whole genre from your library.</p>
@@ -404,7 +404,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal">
         <div class="modal-header">
           <h3>➕ Add to Playlist</h3>
-          <button class="modal-close" data-close="addToPlaylistModal">&times;</button>
+          <button class="modal-close" data-close="addToPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc" id="addToPlaylistSubtext">Select which playlist you want to add the selected song(s) to:</p>
@@ -433,7 +433,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal">
         <div class="modal-header">
           <h3>🎵 Add Entire Genre to Playlist</h3>
-          <button class="modal-close" data-close="addGenreToPlaylistModal">&times;</button>
+          <button class="modal-close" data-close="addGenreToPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc" id="addGenreToPlaylistDesc">Select a genre from your library to dump all its matching tracks into this playlist:</p>
@@ -459,7 +459,7 @@ Overmono - Good Lies" rows="4"></textarea>
             <span class="badge badge-subgenre" id="inspectorTrackCount">0 tracks</span>
             <span class="auth-status-badge badge-synced hidden" id="inspectorSyncedBadge">Synced to YouTube Music</span>
           </div>
-          <button class="modal-close" data-close="playlistInspectorModal">&times;</button>
+          <button class="modal-close" data-close="playlistInspectorModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc" id="inspectorPlaylistDesc"></p>
@@ -497,7 +497,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal">
         <div class="modal-header">
           <h3>🔀 Merge Sub-genres</h3>
-          <button class="modal-close" data-close="mergeModal">&times;</button>
+          <button class="modal-close" data-close="mergeModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc">Combine all songs from one sub-genre into another.</p>
@@ -523,7 +523,7 @@ Overmono - Good Lies" rows="4"></textarea>
       <div class="modal-dialog glass-modal modal-lg">
         <div class="modal-header">
           <h3>✨ Build Custom Playlist by Genre & Vibe</h3>
-          <button class="modal-close" data-close="customPlaylistModal">&times;</button>
+          <button class="modal-close" data-close="customPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
           <p class="section-desc">Create a tailored playlist by combining specific genres, subgenres, or vibe moods from your library.</p>

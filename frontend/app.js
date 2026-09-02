@@ -1067,7 +1067,7 @@ async function handleClassifyTracks() {
   elements.classifySpinner.classList.remove('hidden');
   elements.aiProgressWrapper.classList.remove('hidden');
   elements.aiProgressPercent.textContent = '0%';
-  elements.aiProgressBarFill.style.width = '0%';
+  elements.aiProgressBarFill.style.transform = 'scaleX(0)';
   elements.aiProgressLabel.textContent = '✨ Connecting to Gemini AI...';
 
   try {
@@ -1102,11 +1102,11 @@ async function handleClassifyTracks() {
               elements.aiProgressLabel.textContent = `Analyzing ${event.total} songs in batches...`;
             } else if (event.type === 'progress') {
               elements.aiProgressPercent.textContent = `${event.percent}%`;
-              elements.aiProgressBarFill.style.width = `${event.percent}%`;
+              elements.aiProgressBarFill.style.transform = `scaleX(${event.percent / 100})`;
               elements.aiProgressSubtext.textContent = `${event.processed} / ${event.total} tracks analyzed [${event.model_used}]`;
             } else if (event.type === 'complete') {
               elements.aiProgressLabel.textContent = '✨ Classification Complete!';
-              elements.aiProgressBarFill.style.width = '100%';
+              elements.aiProgressBarFill.style.transform = 'scaleX(1)';
               elements.aiProgressPercent.textContent = '100%';
               showToast('Classification completed successfully!', 'success');
             } else if (event.type === 'error') {

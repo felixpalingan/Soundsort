@@ -40,9 +40,14 @@
   --shadow-glow-yt: 0 0 25px rgba(255, 0, 0, 0.35);
 
   --font-heading: 'Outfit', -apple-system, sans-serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
   --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
 }
 
 * {
@@ -1128,9 +1133,11 @@ textarea {
 
 .progress-bar-fill {
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: var(--gradient-yt);
-  transition: width 0.3s ease;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sync-status-msg {
@@ -1160,7 +1167,7 @@ textarea {
   text-decoration: underline;
 }
 
-/* Toasts */
+/* AI Hub & Progress */
 .ai-actions {
   display: flex;
   flex-direction: column;
@@ -1196,12 +1203,13 @@ textarea {
 
 .progress-bar-neon {
   background: var(--gradient-neon);
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
-  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .progress-current-batch {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
   margin-top: 6px;
   text-align: right;
@@ -1247,10 +1255,10 @@ textarea {
 .toast {
   padding: 12px 18px;
   border-radius: var(--radius-md);
-  background: #1e2235;
+  background: #181b28;
   color: var(--text-primary);
   border: 1px solid var(--border-glass-bright);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
   font-size: 0.85rem;
   font-weight: 500;
   display: flex;
@@ -1259,13 +1267,32 @@ textarea {
   animation: slideInRight 0.25s ease-out;
 }
 
-.toast-success { border-left: 4px solid var(--accent-green); }
-.toast-error { border-left: 4px solid var(--accent-red); }
-.toast-info { border-left: 4px solid var(--accent-cyan); }
+.toast-success {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.toast-error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.toast-info {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.35);
+}
 
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ------------------------------------------------------------- */

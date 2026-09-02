@@ -18,7 +18,7 @@ class TrackItem(BaseModel):
     title: str
     artist: str
     album: Optional[str] = ""
-    source_platform: str = "manual"  # 'spotify' | 'soundcloud' | 'youtube' | 'manual'
+    source_platform: str = "manual"  # 'spotify' | 'soundcloud' | 'youtube' | 'manual' | 'local'
     source_url: Optional[str] = ""
     thumbnail: Optional[str] = ""
     duration_str: Optional[str] = ""
@@ -29,6 +29,9 @@ class TrackItem(BaseModel):
     matched_yt_id: Optional[str] = None
     matched_yt_title: Optional[str] = None
     is_synced: bool = False
+    is_local: bool = False
+    file_path: Optional[str] = None
+    is_tagged: bool = False
     assigned_playlist: Optional[str] = None
     created_at: float = Field(default_factory=time.time)
 
@@ -47,6 +50,8 @@ class AppSettings(BaseModel):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.7-flash"
     playlist_prefix: str = "SoundSort: "
+    music_directory: str = ""
+    download_directory: str = "downloads"
     ytmusic_is_connected: bool = False
 
 def get_settings() -> AppSettings:

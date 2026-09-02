@@ -1,4 +1,4 @@
-// SoundSort AI - Modern Frontend Controller & Playlist Studio
+// SoundSort AI - Modern Frontend Controller & Playlist Studio & Local Audio Hub
 
 const API_BASE = '/api';
 
@@ -7,7 +7,7 @@ const state = {
   tracks: [],
   playlists: [],
   selectedTrackIds: new Set(),
-  activeTab: 'library', // 'library' | 'playlists'
+  activeTab: 'library', // 'library' | 'playlists' | 'local'
   currentInspectingPlaylist: null,
   targetPlaylistForAdd: null,
   allMainGenres: [],
@@ -17,6 +17,7 @@ const state = {
   viewMode: 'grid', // 'grid' or 'table'
   filters: {
     search: '',
+    source: '', // '' | 'local' | 'online'
     mainGenre: '',
     subGenre: ''
   }
@@ -47,26 +48,28 @@ const elements = {
   // Navigation
   navTabLibrary: document.getElementById('navTabLibrary'),
   navTabPlaylists: document.getElementById('navTabPlaylists'),
+  navTabLocal: document.getElementById('navTabLocal'),
   sectionLibrary: document.getElementById('sectionLibrary'),
   sectionPlaylists: document.getElementById('sectionPlaylists'),
+  sectionLocal: document.getElementById('sectionLocal'),
   tabCountLibrary: document.getElementById('tabCountLibrary'),
   tabCountPlaylists: document.getElementById('tabCountPlaylists'),
+  tabCountLocal: document.getElementById('tabCountLocal'),
 
-  // Status Chips
+  // Status Chips & Counters
   geminiStatusChip: document.getElementById('geminiStatusChip'),
   ytStatusChip: document.getElementById('ytStatusChip'),
   activeModelTag: document.getElementById('activeModelTag'),
-
-  // Stats Counters
   statTotalTracks: document.getElementById('statTotalTracks'),
   statClassified: document.getElementById('statClassified'),
-  statSubgenres: document.getElementById('statSubgenres'),
+  statLocal: document.getElementById('statLocal'),
   statSynced: document.getElementById('statSynced'),
 
   // Importer
   importInput: document.getElementById('importInput'),
   fileUploadInput: document.getElementById('fileUploadInput'),
   btnUploadCsv: document.getElementById('btnUploadCsv'),
+  btnOpenScanLocalModal: document.getElementById('btnOpenScanLocalModal'),
   btnImport: document.getElementById('btnImport'),
   importSpinner: document.getElementById('importSpinner'),
   btnLoadSample: document.getElementById('btnLoadSample'),
@@ -84,8 +87,9 @@ const elements = {
   aiProgressBarFill: document.getElementById('aiProgressBarFill'),
   aiProgressSubtext: document.getElementById('aiProgressSubtext'),
 
-  // Library Studio
+  // Library Studio & Filters
   filterSearch: document.getElementById('filterSearch'),
+  filterSource: document.getElementById('filterSource'),
   filterMainGenre: document.getElementById('filterMainGenre'),
   filterSubGenre: document.getElementById('filterSubGenre'),
   btnViewGrid: document.getElementById('btnViewGrid'),
@@ -101,33 +105,49 @@ const elements = {
   btnAutoGeneratePlaylists: document.getElementById('btnAutoGeneratePlaylists'),
   btnExportAllPlaylists: document.getElementById('btnExportAllPlaylists'),
 
+  // Local Hub View
+  inputLocalScanPath: document.getElementById('inputLocalScanPath'),
+  btnTriggerScanPath: document.getElementById('btnTriggerScanPath'),
+  scanSpinner: document.getElementById('scanSpinner'),
+  btnTagAllLocalTracks: document.getElementById('btnTagAllLocalTracks'),
+  tagAllSpinner: document.getElementById('tagAllSpinner'),
+  localUntaggedCount: document.getElementById('localUntaggedCount'),
+  inputOrganizeDestPath: document.getElementById('inputOrganizeDestPath'),
+  chkCopyInsteadOfMove: document.getElementById('chkCopyInsteadOfMove'),
+  btnOrganizeLocalFiles: document.getElementById('btnOrganizeLocalFiles'),
+  btnRefreshLocalList: document.getElementById('btnRefreshLocalList'),
+  localTracksListTableContainer: document.getElementById('localTracksListTableContainer'),
+
   // Sticky Multi-Selection Bar
   selectionActionBar: document.getElementById('selectionActionBar'),
   selectedCountBadge: document.getElementById('selectedCountBadge'),
   btnAddSelectedToPlaylist: document.getElementById('btnAddSelectedToPlaylist'),
+  btnDownloadSelectedTracks: document.getElementById('btnDownloadSelectedTracks'),
+  btnTagSelectedTracks: document.getElementById('btnTagSelectedTracks'),
   btnDeselectAllTracks: document.getElementById('btnDeselectAllTracks'),
 
-  // Create Playlist Modal
+  // Modals
+  scanLocalModal: document.getElementById('scanLocalModal'),
+  modalInputScanPath: document.getElementById('modalInputScanPath'),
+  btnConfirmScanLocal: document.getElementById('btnConfirmScanLocal'),
+
   createPlaylistModal: document.getElementById('createPlaylistModal'),
   inputNewPlaylistTitle: document.getElementById('inputNewPlaylistTitle'),
   inputNewPlaylistDesc: document.getElementById('inputNewPlaylistDesc'),
   selectNewPlaylistGenre: document.getElementById('selectNewPlaylistGenre'),
   btnConfirmCreatePlaylist: document.getElementById('btnConfirmCreatePlaylist'),
 
-  // Add to Playlist Modal
   addToPlaylistModal: document.getElementById('addToPlaylistModal'),
   addToPlaylistSubtext: document.getElementById('addToPlaylistSubtext'),
   selectTargetPlaylist: document.getElementById('selectTargetPlaylist'),
   inputQuickNewPlaylistTitle: document.getElementById('inputQuickNewPlaylistTitle'),
   btnConfirmAddToPlaylist: document.getElementById('btnConfirmAddToPlaylist'),
 
-  // Add Entire Genre Modal
   addGenreToPlaylistModal: document.getElementById('addGenreToPlaylistModal'),
   addGenreToPlaylistDesc: document.getElementById('addGenreToPlaylistDesc'),
   selectGenreToDump: document.getElementById('selectGenreToDump'),
   btnConfirmAddGenreToPlaylist: document.getElementById('btnConfirmAddGenreToPlaylist'),
 
-  // Playlist Inspector Modal
   playlistInspectorModal: document.getElementById('playlistInspectorModal'),
   inspectorPlaylistTitle: document.getElementById('inspectorPlaylistTitle'),
   inspectorPlaylistDesc: document.getElementById('inspectorPlaylistDesc'),
@@ -135,12 +155,12 @@ const elements = {
   inspectorSyncedBadge: document.getElementById('inspectorSyncedBadge'),
   inspectorSearch: document.getElementById('inspectorSearch'),
   inspectorTracksList: document.getElementById('inspectorTracksList'),
+  btnInspectorDownloadAll: document.getElementById('btnInspectorDownloadAll'),
   btnInspectorAddGenre: document.getElementById('btnInspectorAddGenre'),
   btnInspectorExportYT: document.getElementById('btnInspectorExportYT'),
   inspectorExportSpinner: document.getElementById('inspectorExportSpinner'),
   inspectorYtLink: document.getElementById('inspectorYtLink'),
 
-  // Custom Playlist Modal
   customPlaylistModal: document.getElementById('customPlaylistModal'),
   inputCustomPlaylistTitle: document.getElementById('inputCustomPlaylistTitle'),
   selectCustomMainGenre: document.getElementById('selectCustomMainGenre'),
@@ -151,8 +171,6 @@ const elements = {
   btnCreateCustomPlaylist: document.getElementById('btnCreateCustomPlaylist'),
   customPlaylistSpinner: document.getElementById('customPlaylistSpinner'),
 
-  // Modals & Settings
-  btnOpenSettings: document.getElementById('btnOpenSettings'),
   settingsModal: document.getElementById('settingsModal'),
   inputGeminiKey: document.getElementById('inputGeminiKey'),
   selectGeminiModel: document.getElementById('selectGeminiModel'),
@@ -160,9 +178,9 @@ const elements = {
   btnConnectYT: document.getElementById('btnConnectYT'),
   ytAuthIndicator: document.getElementById('ytAuthIndicator'),
   inputPlaylistPrefix: document.getElementById('inputPlaylistPrefix'),
+  inputDownloadFolder: document.getElementById('inputDownloadFolder'),
   btnSaveSettings: document.getElementById('btnSaveSettings'),
 
-  // Merge Modal
   mergeModal: document.getElementById('mergeModal'),
   selectMergeSource: document.getElementById('selectMergeSource'),
   inputMergeTarget: document.getElementById('inputMergeTarget'),
@@ -173,7 +191,7 @@ const elements = {
 };
 
 // -------------------------------------------------------------
-// Initialization & Lifecycle
+// App Initialization
 // -------------------------------------------------------------
 async function initApp() {
   setupEventListeners();
@@ -188,7 +206,7 @@ async function refreshAll() {
 }
 
 // -------------------------------------------------------------
-// API Calls & Data Loaders
+// Loaders & State Refresh
 // -------------------------------------------------------------
 async function loadStatus() {
   try {
@@ -202,11 +220,15 @@ async function loadStatus() {
 
     elements.statTotalTracks.textContent = data.total_tracks;
     elements.statClassified.textContent = data.classified_tracks;
-    elements.statSubgenres.textContent = data.total_subgenres;
+    elements.statLocal.textContent = data.local_tracks || 0;
     elements.statSynced.textContent = data.synced_tracks;
 
     elements.tabCountLibrary.textContent = data.total_tracks;
     elements.tabCountPlaylists.textContent = data.total_playlists || 0;
+    elements.tabCountLocal.textContent = data.local_tracks || 0;
+
+    const untaggedCount = Math.max(0, (data.local_tracks || 0) - (data.tagged_tracks || 0));
+    elements.localUntaggedCount.textContent = untaggedCount;
   } catch (err) {
     console.error('Failed to load status:', err);
   }
@@ -225,6 +247,9 @@ async function loadSettings() {
     }
     if (data.playlist_prefix) {
       elements.inputPlaylistPrefix.value = data.playlist_prefix;
+    }
+    if (data.download_directory) {
+      elements.inputDownloadFolder.value = data.download_directory;
     }
     if (data.masked_gemini_key) {
       elements.inputGeminiKey.placeholder = `Current Key: ${data.masked_gemini_key}`;
@@ -248,6 +273,7 @@ async function loadTracks() {
 
     updateGenreFilterDropdowns();
     applyFiltersAndRender();
+    renderLocalTracksTable();
   } catch (err) {
     console.error('Error loading tracks:', err);
     showToast('Failed to load tracks', 'error');
@@ -300,26 +326,258 @@ function updateGenreFilterDropdowns() {
 }
 
 // -------------------------------------------------------------
-// Tabs Navigation
+// Tabs Navigation (Library, Playlists, Local Hub)
 // -------------------------------------------------------------
 function switchTab(tabName) {
   state.activeTab = tabName;
-  if (tabName === 'library') {
-    elements.navTabLibrary.classList.add('active');
-    elements.navTabPlaylists.classList.remove('active');
-    elements.sectionLibrary.classList.add('active');
-    elements.sectionPlaylists.classList.remove('active');
-  } else {
-    elements.navTabLibrary.classList.remove('active');
-    elements.navTabPlaylists.classList.add('active');
-    elements.sectionLibrary.classList.remove('active');
-    elements.sectionPlaylists.classList.add('active');
+
+  elements.navTabLibrary.classList.toggle('active', tabName === 'library');
+  elements.navTabPlaylists.classList.toggle('active', tabName === 'playlists');
+  elements.navTabLocal.classList.toggle('active', tabName === 'local');
+
+  elements.sectionLibrary.classList.toggle('active', tabName === 'library');
+  elements.sectionPlaylists.classList.toggle('active', tabName === 'playlists');
+  elements.sectionLocal.classList.toggle('active', tabName === 'local');
+
+  if (tabName === 'playlists') {
     renderPlaylistsGrid();
+  } else if (tabName === 'local') {
+    renderLocalTracksTable();
   }
 }
 
 // -------------------------------------------------------------
-// Web Playlists Studio Rendering & Actions
+// Local Audio Scanner & Tagging
+// -------------------------------------------------------------
+function setScanPath(path) {
+  elements.inputLocalScanPath.value = path;
+  if (elements.modalInputScanPath) elements.modalInputScanPath.value = path;
+}
+
+async function handleScanLocalFolder(path) {
+  if (!path || !path.trim()) {
+    showToast('Please enter a valid directory path', 'error');
+    return;
+  }
+
+  elements.scanSpinner.classList.remove('hidden');
+  elements.btnTriggerScanPath.disabled = true;
+
+  try {
+    showToast(`Scanning folder ${path}...`, 'info');
+    const res = await fetch(`${API_BASE}/local/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ directory_path: path.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Scan failed');
+
+    closeModal(elements.scanLocalModal);
+    showToast(data.message, 'success');
+    await refreshAll();
+    switchTab('local');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    elements.scanSpinner.classList.add('hidden');
+    elements.btnTriggerScanPath.disabled = false;
+  }
+}
+
+async function handleTagSingleTrack(trackId) {
+  try {
+    showToast('Writing ID3 tags to local audio file...', 'info');
+    const res = await fetch(`${API_BASE}/local/tag-track/${trackId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging track');
+
+    showToast(data.message, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleTagAllLocalTracks() {
+  elements.tagAllSpinner.classList.remove('hidden');
+  elements.btnTagAllLocalTracks.disabled = true;
+
+  try {
+    showToast('Writing ID3 / audio tags to all local files...', 'info');
+    const res = await fetch(`${API_BASE}/local/tag-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging files');
+
+    showToast(data.message, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    elements.tagAllSpinner.classList.add('hidden');
+    elements.btnTagAllLocalTracks.disabled = false;
+  }
+}
+
+async function handleOrganizeLocalFiles() {
+  const targetDir = elements.inputOrganizeDestPath.value.trim();
+  const copyInsteadOfMove = elements.chkCopyInsteadOfMove.checked;
+
+  if (!targetDir) {
+    showToast('Please specify a target directory', 'error');
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to organize local files into: ${targetDir}?`)) return;
+
+  try {
+    showToast('Organizing local audio files into genre subfolders...', 'info');
+    const res = await fetch(`${API_BASE}/local/organize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_directory: targetDir,
+        copy_instead_of_move: copyInsteadOfMove
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed organizing files');
+
+    showToast(`Organized ${data.moved_count} audio files into genre folders!`, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function renderLocalTracksTable() {
+  const container = elements.localTracksListTableContainer;
+  const localTracks = state.allTracks.filter(t => t.is_local);
+
+  if (localTracks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 30px;">
+        <div class="empty-icon">💾</div>
+        <h3>No local audio files imported yet</h3>
+        <p>Use the folder scanner above to import music files from your computer or download online tracks to local disk.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="tracks-table">
+        <thead>
+          <tr>
+            <th width="40"><input type="checkbox" onchange="toggleSelectAllTable(this)"></th>
+            <th>Title & Artist</th>
+            <th>AI Sub-genre</th>
+            <th>Local File Path</th>
+            <th>Tag Status</th>
+            <th width="140">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${localTracks.map(t => `
+            <tr>
+              <td><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
+              <td>
+                <div class="table-track-title">${escapeHtml(t.title)}</div>
+                <div class="table-track-artist">${escapeHtml(t.artist)}</div>
+              </td>
+              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || 'General')}</span></td>
+              <td><span class="file-path-badge" title="${escapeHtml(t.file_path || '')}">${escapeHtml(t.file_path || '-')}</span></td>
+              <td>
+                ${t.is_tagged ? `<span class="badge badge-tagged">🏷️ Tagged</span>` : `<span class="badge badge-draft">Untagged</span>`}
+              </td>
+              <td>
+                <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags to this audio file">
+                  🏷️ Write Tags
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// Online Audio Downloader (yt-dlp with Auto-Tagging)
+// -------------------------------------------------------------
+async function handleDownloadSingleTrack(trackId, btnElement) {
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.innerHTML = `⏳ <span>Downloading...</span>`;
+  }
+  showToast('Downloading audio stream & embedding ID3 tags...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-track/${trackId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Download failed');
+
+    showToast(`Downloaded "${data.title}" to ${data.filename} with full ID3 tags!`, 'success');
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = `⬇️ Download`;
+    }
+  }
+}
+
+async function handleDownloadSelectedTracks() {
+  const tids = Array.from(state.selectedTrackIds);
+  if (tids.length === 0) {
+    showToast('No tracks selected', 'error');
+    return;
+  }
+
+  showToast(`Downloading ${tids.length} selected tracks in background...`, 'info');
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-batch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ track_ids: tids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Batch download failed');
+
+    showToast(`Successfully downloaded ${data.downloaded_count} songs with ID3 tags!`, 'success');
+    deselectAllTracks();
+    await refreshAll();
+    switchTab('local');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handleDownloadPlaylist(playlistId) {
+  showToast('Downloading entire playlist into local folder with ID3 tags...', 'info');
+  try {
+    const res = await fetch(`${API_BASE}/downloader/download-playlist/${playlistId}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Playlist download failed');
+
+    showToast(`Downloaded ${data.downloaded_count} songs into "${data.playlist_title}" folder!`, 'success');
+    await refreshAll();
+    switchTab('local');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// Playlists Studio Actions
 // -------------------------------------------------------------
 function renderPlaylistsGrid() {
   const grid = elements.playlistsGrid;
@@ -346,12 +604,11 @@ function renderPlaylistsGrid() {
     const trackCount = p.track_count !== undefined ? p.track_count : (p.track_ids ? p.track_ids.length : 0);
     const syncBadgeHtml = p.is_synced && p.yt_playlist_url
       ? `<a href="${p.yt_playlist_url}" target="_blank" class="badge-synced" title="Open playlist on YouTube Music">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
           YT Music ↗
         </a>`
       : `<span class="badge-draft">Web Draft</span>`;
 
-    // Preview preview songs
     let previewHtml = '';
     if (p.tracks_preview && p.tracks_preview.length > 0) {
       previewHtml = `
@@ -362,7 +619,7 @@ function renderPlaylistsGrid() {
               <strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}
             </div>
           `).join('')}
-          ${trackCount > p.tracks_preview.length ? `<div style="font-size: 0.7rem; color: var(--text-muted); padding-top: 2px;">+ ${trackCount - p.tracks_preview.length} more songs</div>` : ''}
+          ${trackCount > p.tracks_preview.length ? `<div style="font-size: 0.75rem; color: var(--text-muted); padding-top: 2px;">+ ${trackCount - p.tracks_preview.length} more songs</div>` : ''}
         </div>
       `;
     } else {
@@ -397,11 +654,14 @@ function renderPlaylistsGrid() {
         <button class="btn btn-ghost btn-sm" onclick="openAddGenreModal('${p.id}')" title="Add all songs from a genre into this playlist">
           ➕ Add Genre...
         </button>
-        <button class="btn-yt-export" onclick="exportPlaylistToYT('${p.id}', this)" title="Export to YouTube Music">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-          <span>Export to YT</span>
+        <button class="btn-download-track" onclick="handleDownloadPlaylist('${p.id}')" title="Download all songs in this playlist to local folder with ID3 tags">
+          ⬇️ Download MP3s
         </button>
-        <button class="btn btn-ghost btn-sm" style="color: var(--accent-red); padding: 6px 8px;" onclick="deleteWebPlaylist('${p.id}')" title="Delete playlist">
+        <button class="btn-yt-export" onclick="exportPlaylistToYT('${p.id}', this)" title="Export to YouTube Music">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <span>Export YT</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" style="color: var(--accent-red); padding: 6px 8px;" onclick="deleteWebPlaylist('${p.id}')" title="Delete playlist" aria-label="Delete playlist">
           🗑
         </button>
       </div>
@@ -411,18 +671,13 @@ function renderPlaylistsGrid() {
   });
 }
 
-// -------------------------------------------------------------
-// Playlists Actions (Create, Delete, Add Genre, Export)
-// -------------------------------------------------------------
 function openCreatePlaylistModal() {
   elements.inputNewPlaylistTitle.value = '';
   elements.inputNewPlaylistDesc.value = '';
   
-  // Populate genres options
   const select = elements.selectNewPlaylistGenre;
   select.innerHTML = '<option value="">-- Start Empty (Add songs manually later) --</option>';
   
-  // Collect unique genres
   const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
   genres.forEach(g => {
     if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
@@ -566,8 +821,8 @@ async function exportPlaylistToYT(playlistId, btnElement) {
     if (btnElement) {
       btnElement.disabled = false;
       btnElement.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-        <span>Export to YT</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        <span>Export YT</span>
       `;
     }
   }
@@ -593,14 +848,14 @@ async function exportAllPlaylistsToYT() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
       <span>Export All to YouTube Music</span>
     `;
   }
 }
 
 // -------------------------------------------------------------
-// Playlist Inspector Modal (View & Remove Tracks in Playlist)
+// Playlist Inspector Modal
 // -------------------------------------------------------------
 async function openPlaylistInspector(playlistId) {
   try {
@@ -655,8 +910,12 @@ function renderInspectorTracksList(tracksList) {
         </div>
       </div>
       <div class="inspector-track-right">
-        <button class="btn-remove-track" onclick="removeTrackFromCurrentPlaylist('${t.id}')" title="Remove song from playlist">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        ${t.is_local 
+          ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
+          : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3">⬇️ Download</button>`
+        }
+        <button class="btn-remove-track" onclick="removeTrackFromCurrentPlaylist('${t.id}')" title="Remove song from playlist" aria-label="Remove song from playlist">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
     </div>
@@ -670,7 +929,6 @@ async function removeTrackFromCurrentPlaylist(trackId) {
     const res = await fetch(`${API_BASE}/playlists/${pid}/tracks/${trackId}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to remove track');
     
-    // Refresh inspector
     await openPlaylistInspector(pid);
     await loadPlaylists();
     showToast('Song removed from playlist', 'info');
@@ -680,7 +938,7 @@ async function removeTrackFromCurrentPlaylist(trackId) {
 }
 
 // -------------------------------------------------------------
-// Multi-Selection and Quick Add to Playlist
+// Multi-Selection & Floating Bar Actions
 // -------------------------------------------------------------
 function toggleTrackSelection(trackId) {
   if (state.selectedTrackIds.has(trackId)) {
@@ -745,7 +1003,6 @@ function openAddToPlaylistModal(specificTrackId = null) {
     });
   }
 
-  // Store active tids in state
   state._pendingAddTrackIds = tids;
   openModal(elements.addToPlaylistModal);
 }
@@ -759,7 +1016,6 @@ async function handleConfirmAddToPlaylist() {
 
   try {
     if (quickTitle) {
-      // Create new playlist with these tracks
       const res = await fetch(`${API_BASE}/playlists`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -770,7 +1026,6 @@ async function handleConfirmAddToPlaylist() {
       targetPlaylistId = newP.id;
       showToast(`Created playlist "${quickTitle}" with ${tids.length} songs!`, 'success');
     } else if (targetPlaylistId) {
-      // Add to existing
       const res = await fetch(`${API_BASE}/playlists/${targetPlaylistId}/tracks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -792,6 +1047,31 @@ async function handleConfirmAddToPlaylist() {
   }
 }
 
+async function handleTagSelectedTracks() {
+  const tids = Array.from(state.selectedTrackIds);
+  if (tids.length === 0) {
+    showToast('No tracks selected', 'error');
+    return;
+  }
+
+  try {
+    showToast(`Writing tags to ${tids.length} selected local files...`, 'info');
+    const res = await fetch(`${API_BASE}/local/tag-all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ track_ids: tids })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Failed tagging');
+
+    showToast(data.message, 'success');
+    deselectAllTracks();
+    await refreshAll();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 function quickCreatePlaylistFromCurrentFilter() {
   if (!state.tracks || state.tracks.length === 0) {
     showToast('No tracks currently match your filter', 'error');
@@ -802,8 +1082,6 @@ function quickCreatePlaylistFromCurrentFilter() {
   elements.inputNewPlaylistDesc.value = `Created from filtered tracks (${state.tracks.length} songs)`;
   elements.selectNewPlaylistGenre.value = '';
   
-  // Store filtered track IDs directly
-  state._pendingPrefillTrackIds = state.tracks.map(t => t.id);
   openModal(elements.createPlaylistModal);
 }
 
@@ -813,6 +1091,7 @@ function quickCreatePlaylistFromCurrentFilter() {
 function applyFiltersAndRender() {
   let filtered = [...state.allTracks];
   const q = state.filters.search.trim().toLowerCase();
+  const src = state.filters.source;
   const mg = state.filters.mainGenre.trim().toLowerCase();
   const sg = state.filters.subGenre.trim().toLowerCase();
 
@@ -823,8 +1102,15 @@ function applyFiltersAndRender() {
       (t.album && t.album.toLowerCase().includes(q)) ||
       (t.sub_genre && t.sub_genre.toLowerCase().includes(q)) ||
       (t.main_genre && t.main_genre.toLowerCase().includes(q)) ||
-      (t.vibe && t.vibe.toLowerCase().includes(q))
+      (t.vibe && t.vibe.toLowerCase().includes(q)) ||
+      (t.file_path && t.file_path.toLowerCase().includes(q))
     );
+  }
+
+  if (src === 'local') {
+    filtered = filtered.filter(t => t.is_local);
+  } else if (src === 'online') {
+    filtered = filtered.filter(t => !t.is_local);
   }
 
   if (mg) {
@@ -846,7 +1132,7 @@ function renderStudioContent() {
       <div class="empty-state">
         <div class="empty-icon">🎵</div>
         <h3>No matching tracks found</h3>
-        <p>Try clearing your search or genre filters.</p>
+        <p>Try clearing your search, source, or genre filters.</p>
       </div>
     `;
     return;
@@ -903,9 +1189,16 @@ function renderGroupedGridView(container) {
               <span class="track-title-mini" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
               <span class="track-artist-mini" title="${escapeHtml(t.artist)}">${escapeHtml(t.artist)}</span>
             </div>
-            <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')" title="Add to specific playlist">
-              + Playlist
-            </button>
+            <div style="display: flex; gap: 4px; align-items: center;">
+              ${t.is_local 
+                ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>
+                   <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
+                : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3 with ID3 tags">⬇️</button>`
+              }
+              <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')" title="Add to specific playlist">
+                + PL
+              </button>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -926,10 +1219,11 @@ function renderTableView(container) {
             <th width="40"><input type="checkbox" id="chkSelectAllTable" onchange="toggleSelectAllTable(this)"></th>
             <th width="60">Cover</th>
             <th>Title & Artist</th>
+            <th>Source</th>
             <th>Main Genre</th>
             <th>Sub-genre</th>
             <th>Vibe / Mood</th>
-            <th width="120">Actions</th>
+            <th width="160">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -941,13 +1235,23 @@ function renderTableView(container) {
                 <div class="table-track-title">${escapeHtml(t.title)}</div>
                 <div class="table-track-artist">${escapeHtml(t.artist)}</div>
               </td>
+              <td>
+                ${t.is_local 
+                  ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>` 
+                  : `<span class="badge badge-online">🌐 Online</span>`}
+              </td>
               <td><span class="badge badge-main-genre">${escapeHtml(t.main_genre || 'Other')}</span></td>
               <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || 'General')}</span></td>
               <td><span class="vibe-tag">${escapeHtml(t.vibe || '-')}</span></td>
               <td>
-                <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">
-                  ➕ Playlist
-                </button>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  ${t.is_local 
+                    ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
+                    : `<button class="btn-download-track" onclick="handleDownloadSingleTrack('${t.id}', this)" title="Download to local MP3">⬇️ DL</button>`}
+                  <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">
+                    ➕ PL
+                  </button>
+                </div>
               </td>
             </tr>
           `).join('')}
@@ -1138,6 +1442,7 @@ async function handleSaveSettings() {
   const geminiKey = elements.inputGeminiKey.value.trim();
   const geminiModel = elements.selectGeminiModel.value;
   const prefix = elements.inputPlaylistPrefix.value.trim();
+  const dlFolder = elements.inputDownloadFolder.value.trim();
 
   try {
     const res = await fetch(`${API_BASE}/settings`, {
@@ -1146,7 +1451,8 @@ async function handleSaveSettings() {
       body: JSON.stringify({
         gemini_api_key: geminiKey || undefined,
         gemini_model: geminiModel,
-        playlist_prefix: prefix
+        playlist_prefix: prefix,
+        download_directory: dlFolder || undefined
       })
     });
     if (!res.ok) throw new Error('Failed to save settings');
@@ -1198,6 +1504,7 @@ function setupEventListeners() {
   // Navigation Tabs
   elements.navTabLibrary.addEventListener('click', () => switchTab('library'));
   elements.navTabPlaylists.addEventListener('click', () => switchTab('playlists'));
+  elements.navTabLocal.addEventListener('click', () => switchTab('local'));
 
   // Importer
   elements.btnImport.addEventListener('click', handleImportText);
@@ -1216,12 +1523,24 @@ function setupEventListeners() {
     await refreshAll();
   });
 
+  // Local Scanner Modal & Actions
+  elements.btnOpenScanLocalModal.addEventListener('click', () => openModal(elements.scanLocalModal));
+  elements.btnConfirmScanLocal.addEventListener('click', () => handleScanLocalFolder(elements.modalInputScanPath.value));
+  elements.btnTriggerScanPath.addEventListener('click', () => handleScanLocalFolder(elements.inputLocalScanPath.value));
+  elements.btnTagAllLocalTracks.addEventListener('click', handleTagAllLocalTracks);
+  elements.btnOrganizeLocalFiles.addEventListener('click', handleOrganizeLocalFiles);
+  elements.btnRefreshLocalList.addEventListener('click', () => renderLocalTracksTable());
+
   // AI Classifier
   elements.btnClassify.addEventListener('click', handleClassifyTracks);
 
   // Filters & Search
   elements.filterSearch.addEventListener('input', (e) => {
     state.filters.search = e.target.value;
+    applyFiltersAndRender();
+  });
+  elements.filterSource.addEventListener('change', (e) => {
+    state.filters.source = e.target.value;
     applyFiltersAndRender();
   });
   elements.filterMainGenre.addEventListener('change', (e) => {
@@ -1259,12 +1578,19 @@ function setupEventListeners() {
 
   // Selection Bar Actions
   elements.btnAddSelectedToPlaylist.addEventListener('click', () => openAddToPlaylistModal());
+  elements.btnDownloadSelectedTracks.addEventListener('click', handleDownloadSelectedTracks);
+  elements.btnTagSelectedTracks.addEventListener('click', handleTagSelectedTracks);
   elements.btnDeselectAllTracks.addEventListener('click', deselectAllTracks);
 
   // Inspector Search & Actions
   elements.inspectorSearch.addEventListener('input', () => {
     if (state.currentInspectingPlaylist) {
       renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
+    }
+  });
+  elements.btnInspectorDownloadAll.addEventListener('click', () => {
+    if (state.currentInspectingPlaylist) {
+      handleDownloadPlaylist(state.currentInspectingPlaylist.id);
     }
   });
   elements.btnInspectorAddGenre.addEventListener('click', () => {
@@ -1292,7 +1618,6 @@ function setupEventListeners() {
     });
   });
 
-  // Close modals on backdrop click
   document.querySelectorAll('.modal-backdrop').forEach(modal => {
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal(modal);
@@ -1301,7 +1626,7 @@ function setupEventListeners() {
 }
 
 // -------------------------------------------------------------
-// UI Utilities (Modals, Toasts, Chips, Helpers)
+// UI Utilities
 // -------------------------------------------------------------
 function openModal(modal) {
   if (!modal) return;
@@ -1357,5 +1682,4 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', initApp);

@@ -1,20 +1,28 @@
 # SoundSort 🎵
-> AI-Powered Music Classifier & Web Playlist Studio with Real-Time YouTube Music Sync.
+> AI-Powered Music Classifier, Web Playlist Studio, Local ID3 Tagger & Audio Downloader with Real-Time YouTube Music Sync.
 
-SoundSort analyzes your music library using Google Gemini AI, automatically categorizes songs into curated genre buckets (Alt Rock, Scenecore, Indonesian Pop, Breakbeat, Phonk, Techno/Rave, etc.), provides an interactive **Web Playlists Studio** to build and curate playlists, and streams them directly into your YouTube Music account in real-time batches.
+SoundSort analyzes your music library using Google Gemini AI, automatically categorizes songs into curated genre buckets (Alt Rock, Scenecore, Indonesian Pop, Breakbeat, Phonk, Techno/Rave, etc.), provides an interactive **Web Playlists Studio** to curate playlists, writes ID3 metadata tags directly to local audio files, downloads online streams with tags, and syncs playlists directly into your YouTube Music account in real-time batches.
 
 ---
 
 ## Features ✨
 - **Gemini AI Classification**: Deep musicological classification into target genre buckets.
+- **💾 Local Audio Scanner & ID3 Tagger**:
+  - Scan folders on your PC (`.mp3`, `.flac`, `.m4a`, `.ogg`, `.wav`).
+  - **Auto-Tag Local Files**: Write AI-classified Genre, Subgenre, Grouping, and Vibe directly into audio tags on disk.
+  - **Genre Folder Organizer**: Automatically organize files into structured subfolders by genre.
+- **⬇️ Online Audio Downloader with Auto-Tagging**:
+  - Download songs from YouTube/SoundCloud/Spotify lists to local MP3.
+  - Automatically embeds ID3 tags, Album Art, Artist, Title, and AI Genres into the downloaded file.
+  - Download entire playlists into dedicated folders in 1 click.
 - **📑 Web Playlists Studio**: 
   - Create playlists directly in your browser.
   - **Bulk Genre Dump**: Add all songs from an entire genre/subgenre into a playlist with 1 click.
   - **Multi-Select & Checkbox Selector**: Pick songs one-by-one or in bulk from the library table/cards.
   - **Auto-Generate Playlists**: 1-click generation of playlists from all detected genres in your library.
 - **🚀 One-Click YouTube Music Sync**: Streams and creates playlists on your YouTube Music account per batch to prevent auth expiration.
-- **📄 CSV & Multi-Source Importer**: Paste text directly or import `.csv` / `.txt` track lists exported from YouTube Music, Spotify, TuneMyMusic, or Soundiiz.
-- **✨ Impeccable UI Design**: Modern glassmorphic dark studio UI built to high design and accessibility standards.
+- **📄 CSV & Multi-Source Importer**: Paste text directly or import `.csv` / `.txt` track lists.
+- **✨ Impeccable UI Design**: Modern glassmorphic dark studio UI built to high WCAG accessibility and design standards.
 
 ---
 
@@ -39,29 +47,12 @@ pip install -r backend/requirements.txt
 
 ---
 
-### 3. Prepare Your Song List / CSV 📄
-
-You can import songs into SoundSort using any of these methods:
-
-#### Method A: Direct Paste (Text / Tracklist)
-Format: `Artist - Title` (one per line) or `Title - Artist`:
-```text
-Arctic Monkeys - 505
-Paramore - Misery Business
-6arelyhuman - Hands Up!
-Sheila On 7 - Dan
-Kordhell - Murder In My Mind
-```
-
-#### Method B: CSV File (Exported from Spotify / YT Music / TuneMyMusic)
-CSV with headers `Artist` and `Title` (or `Track Name`, `Artist Name`, `Song Name`):
-```csv
-Artist,Title,Album
-Arctic Monkeys,505,Favourite Worst Nightmare
-Paramore,Misery Business,Riot!
-6arelyhuman,Hands Up!,Hands Up!
-```
-*(You can export your existing playlists from Spotify/YT Music to CSV using free tools like [TuneMyMusic](https://www.tunemymusic.com) or [Soundiiz](https://soundiiz.com)).*
+### 3. Ingesting Music 📄
+You can import tracks into SoundSort via:
+1. **💾 Scan Local Music Folder**: Enter a folder path on your PC (e.g. `C:\Users\Felix\Music`) to load and tag your local audio files.
+2. **📁 CSV File**: Import `.csv` exported from Spotify/YT Music with headers `Artist` and `Title`.
+3. **📋 Direct Paste**: Paste `Artist - Title` or Spotify/SoundCloud playlist links.
+4. **❤️ YouTube Music Likes**: 1-click import of all your liked tracks from YouTube Music.
 
 ---
 
@@ -81,14 +72,6 @@ python -m uvicorn backend.main:app --reload --port 8000
 ```
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
-- **Import** your track list or CSV.
-- **Run AI Classification** to categorize genres.
-- Go to **My Web Playlists** to curate and export directly to YouTube Music!
-
----
-
-### 6. UI Quality & Design Linter (Impeccable) 🎨
-To scan and audit frontend UI design quality:
-```bash
-npx impeccable detect frontend/
-```
+- **Track Library**: Search, filter by source (Local / Online) and genre, download online tracks, or tag local files.
+- **My Web Playlists**: Curate playlists on the web and export to YouTube Music or download as local MP3s.
+- **Local Files & Downloads**: Bulk ID3 tagger and folder organizer.

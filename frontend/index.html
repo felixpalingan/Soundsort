@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundSort AI — Multi-Source Music Sorter & YT Music Creator</title>
-  <meta name="description" content="Aggregate music tracks from Spotify, SoundCloud, and YouTube, classify them into granular sub-genres with AI, fine-tune them visually, and sync directly to YouTube Music.">
+  <title>SoundSort AI — Music Classifier, Web Playlist Studio & Local Tagger</title>
+  <meta name="description" content="Aggregate music tracks from Spotify, SoundCloud, YouTube, and Local Audio Files, classify them into granular sub-genres with AI, tag local ID3 metadata, and sync directly to YouTube Music.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
         </div>
         <div class="brand-text">
           <h1>SoundSort <span class="badge-ai">AI</span></h1>
-          <p class="subtitle">Music Classifier &bull; Web Playlist Studio &bull; YouTube Music Sync</p>
+          <p class="subtitle">AI Classifier &bull; Web Playlist Studio &bull; Local ID3 Tagger &bull; YT Music Sync</p>
         </div>
       </div>
 
@@ -39,6 +39,11 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15V6"></path><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path></svg>
           <span>My Web Playlists</span>
           <span class="tab-count-badge badge-glow" id="tabCountPlaylists">0</span>
+        </button>
+        <button id="navTabLocal" class="nav-tab-btn" data-tab="local" aria-selected="false" role="tab">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+          <span>Local Files & Downloads</span>
+          <span class="tab-count-badge" id="tabCountLocal">0</span>
         </button>
       </nav>
 
@@ -77,15 +82,15 @@
                 <span class="step-num">1</span>
                 <div>
                   <h2>Import Sources</h2>
-                  <p class="panel-desc">Paste Spotify, SoundCloud, YouTube links, text lists or CSV</p>
+                  <p class="panel-desc">Paste Spotify, SoundCloud, YouTube links, CSV, or Scan Local Folder</p>
                 </div>
               </div>
               <div class="source-badges">
+                <span class="badge badge-local">💾 Local Audio</span>
                 <span class="badge badge-csv">📁 CSV File</span>
                 <span class="badge badge-spotify">Spotify</span>
                 <span class="badge badge-soundcloud">SoundCloud</span>
                 <span class="badge badge-yt">YT Music</span>
-                <span class="badge badge-text">Text</span>
               </div>
             </div>
 
@@ -99,11 +104,14 @@ Overmono - Good Lies" rows="4"></textarea>
               
               <div class="importer-actions">
                 <div class="quick-helpers">
+                  <button id="btnOpenScanLocalModal" class="btn btn-secondary btn-sm" title="Scan a music folder on your computer">
+                    💾 Scan Local Music
+                  </button>
                   <button id="btnUploadCsv" class="btn btn-secondary btn-sm" title="Upload CSV song list">
                     📁 Upload CSV
                   </button>
                   <button id="btnImportYtLikes" class="btn btn-secondary btn-sm" title="Import Liked Songs directly from YouTube Music">
-                    ❤️ YT Music Likes
+                    ❤️ YT Likes
                   </button>
                   <button id="btnLoadSample" class="btn btn-ghost btn-sm" title="Try demo sample data">
                     ✨ Demo
@@ -127,7 +135,7 @@ Overmono - Good Lies" rows="4"></textarea>
                 <span class="step-num">2</span>
                 <div>
                   <h2>AI Sub-genre Engine</h2>
-                  <p class="panel-desc">Automatic intelligent genre & vibe categorization</p>
+                  <p class="panel-desc">Automatic intelligent genre, vibe categorization & ID3 tagging</p>
                 </div>
               </div>
               <div class="ai-model-tag" id="activeModelTag">Gemini 3.7 Flash</div>
@@ -144,8 +152,8 @@ Overmono - Good Lies" rows="4"></textarea>
                   <span class="stat-lbl">Classified</span>
                 </div>
                 <div class="stat-card">
-                  <span class="stat-val" id="statSubgenres">0</span>
-                  <span class="stat-lbl">Sub-genres</span>
+                  <span class="stat-val" id="statLocal">0</span>
+                  <span class="stat-lbl">Local Files</span>
                 </div>
                 <div class="stat-card">
                   <span class="stat-val" id="statSynced">0</span>
@@ -160,7 +168,7 @@ Overmono - Good Lies" rows="4"></textarea>
                     <span class="progress-percentage-label" id="aiProgressPercent">0%</span>
                   </div>
                   <div class="progress-bar-wrapper">
-                    <div class="progress-bar-fill progress-bar-neon" id="aiProgressBarFill" style="width: 0%;"></div>
+                    <div class="progress-bar-fill progress-bar-neon" id="aiProgressBarFill"></div>
                   </div>
                   <div class="progress-current-batch" id="aiProgressSubtext">0 / 0 tracks analyzed</div>
                 </div>
@@ -190,11 +198,16 @@ Overmono - Good Lies" rows="4"></textarea>
           <div class="studio-toolbar">
             <div class="toolbar-left">
               <div class="search-box">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                 <input type="text" id="filterSearch" placeholder="Search title, artist, subgenre...">
               </div>
 
               <div class="filter-dropdowns">
+                <select id="filterSource">
+                  <option value="">All Sources (Local & Online)</option>
+                  <option value="local">💾 Local Audio Only</option>
+                  <option value="online">🌐 Online Tracks Only</option>
+                </select>
                 <select id="filterMainGenre">
                   <option value="">All Main Genres</option>
                 </select>
@@ -208,11 +221,11 @@ Overmono - Good Lies" rows="4"></textarea>
               <!-- View toggles & Bulk actions -->
               <div class="view-toggle-group">
                 <button id="btnViewGrid" class="view-btn active" title="Grouped Cards View">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                   <span>Sub-genre Groups</span>
                 </button>
                 <button id="btnViewTable" class="view-btn" title="Flat Table View">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                   <span>Table</span>
                 </button>
               </div>
@@ -234,7 +247,7 @@ Overmono - Good Lies" rows="4"></textarea>
             <div class="empty-state" id="emptyStatePlaceholder">
               <div class="empty-icon">🎵</div>
               <h3>No tracks loaded yet</h3>
-              <p>Import songs using links or CSV above to start sorting!</p>
+              <p>Import songs using links, CSV, or Scan Local Music above to start sorting!</p>
             </div>
           </div>
 
@@ -250,7 +263,7 @@ Overmono - Good Lies" rows="4"></textarea>
           <div class="playlists-studio-header">
             <div class="header-info">
               <h2>📑 Web Playlists Studio</h2>
-              <p class="section-desc">Create playlists on the web, add songs by genre or pick one by one, then export them to YouTube Music in 1 click.</p>
+              <p class="section-desc">Create playlists on the web, add songs by genre or pick one by one, then export them to YouTube Music or download locally in 1 click.</p>
             </div>
             <div class="header-actions">
               <button id="btnOpenCreatePlaylistModal" class="btn btn-primary">
@@ -260,7 +273,7 @@ Overmono - Good Lies" rows="4"></textarea>
                 ⚡ Auto-Create From Genres
               </button>
               <button id="btnExportAllPlaylists" class="btn btn-yt-action" title="Export all web playlists to your YouTube Music account">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
                 <span>Export All to YouTube Music</span>
               </button>
             </div>
@@ -269,6 +282,112 @@ Overmono - Good Lies" rows="4"></textarea>
           <!-- Playlists Grid List -->
           <div class="playlists-grid" id="playlistsGrid">
             <!-- Populated dynamically with Playlist Cards -->
+          </div>
+        </section>
+      </div>
+
+      <!-- ============================================================= -->
+      <!-- TAB 3: LOCAL FILES & DOWNLOADS HUB -->
+      <!-- ============================================================= -->
+      <div id="sectionLocal" class="tab-content">
+        <section class="local-hub-grid">
+          
+          <!-- Card 1: Local Audio Scanner -->
+          <div class="glass-panel local-card">
+            <div class="panel-header">
+              <div class="panel-title-group">
+                <span class="step-num">💾</span>
+                <div>
+                  <h2>Scan Local Music Library</h2>
+                  <p class="panel-desc">Scan folders on your computer for MP3, FLAC, M4A, WAV, or OGG files.</p>
+                </div>
+              </div>
+            </div>
+            <div class="local-card-body">
+              <div class="form-group">
+                <label for="inputLocalScanPath">Music Folder Path</label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="inputLocalScanPath" value="C:\Users\Felix\Music" placeholder="e.g. C:\Users\Felix\Music">
+                  <button id="btnTriggerScanPath" class="btn btn-primary">
+                    <span class="spinner hidden" id="scanSpinner"></span>
+                    <span>🔍 Scan Folder</span>
+                  </button>
+                </div>
+              </div>
+              <div class="path-suggestions">
+                <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Music')">📁 C:\Users\Felix\Music</span>
+                <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Downloads')">📁 C:\Users\Felix\Downloads</span>
+                <span class="badge badge-draft" onclick="setScanPath('downloads')">📁 Project downloads/</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Bulk ID3 Tagger -->
+          <div class="glass-panel local-card">
+            <div class="panel-header">
+              <div class="panel-title-group">
+                <span class="step-num">🏷️</span>
+                <div>
+                  <h2>Auto-Tag Local Files</h2>
+                  <p class="panel-desc">Write AI-classified Genre, Subgenre, Grouping & Vibe directly into local audio files.</p>
+                </div>
+              </div>
+            </div>
+            <div class="local-card-body">
+              <p class="section-desc" style="margin-bottom: 14px;">
+                Permanently embeds metadata into ID3v2 (MP3), MP4/M4A tags, FLAC VorbisComment, or OGG files on disk so they appear organized in music players (AIMP, iTunes, Foobar2000, Windows Media Player).
+              </p>
+              <button id="btnTagAllLocalTracks" class="btn btn-gradient btn-full">
+                <span class="spinner hidden" id="tagAllSpinner"></span>
+                <span>🏷️ Tag All Classified Local Files (<span id="localUntaggedCount">0</span> ready)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card 3: Genre Folder Organizer -->
+          <div class="glass-panel local-card">
+            <div class="panel-header">
+              <div class="panel-title-group">
+                <span class="step-num">📂</span>
+                <div>
+                  <h2>Organize Into Genre Folders</h2>
+                  <p class="panel-desc">Move or copy local files into structured folders named by their AI genre.</p>
+                </div>
+              </div>
+            </div>
+            <div class="local-card-body">
+              <div class="form-group">
+                <label for="inputOrganizeDestPath">Target Directory for Organized Folders</label>
+                <input type="text" id="inputOrganizeDestPath" value="C:\Users\Felix\Music\Sorted" placeholder="e.g. C:\Users\Felix\Music\Sorted">
+              </div>
+              <div class="classify-options-row">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="chkCopyInsteadOfMove" checked>
+                  <span class="checkmark"></span>
+                  <span class="checkbox-text">Copy files (Keep original files safe in place)</span>
+                </label>
+              </div>
+              <button id="btnOrganizeLocalFiles" class="btn btn-secondary btn-full">
+                <span>📁 Organize Files by Genre</span>
+              </button>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Local Files List Table -->
+        <section class="glass-panel" style="margin-top: 24px; padding: 20px;">
+          <div class="playlists-studio-header">
+            <div>
+              <h3>💾 Local & Downloaded Music Library</h3>
+              <p class="section-desc">Manage local audio files, check tag status, and open file locations.</p>
+            </div>
+            <div class="header-actions">
+              <button id="btnRefreshLocalList" class="btn btn-ghost btn-sm">🔄 Refresh List</button>
+            </div>
+          </div>
+          <div id="localTracksListTableContainer">
+            <!-- Populated dynamically with Local Tracks -->
           </div>
         </section>
       </div>
@@ -282,6 +401,12 @@ Overmono - Good Lies" rows="4"></textarea>
         <div class="selection-actions">
           <button id="btnAddSelectedToPlaylist" class="btn btn-primary btn-sm">
             ➕ Add to Playlist...
+          </button>
+          <button id="btnDownloadSelectedTracks" class="btn btn-secondary btn-sm" title="Download selected online songs to MP3 with full ID3 tags">
+            ⬇️ Download MP3 + Tags
+          </button>
+          <button id="btnTagSelectedTracks" class="btn btn-secondary btn-sm" title="Write ID3 tags to selected local files">
+            🏷️ Write Tags
           </button>
           <button id="btnDeselectAllTracks" class="btn btn-ghost btn-sm">
             Deselect All
@@ -351,12 +476,16 @@ Overmono - Good Lies" rows="4"></textarea>
             <button id="btnConnectYT" class="btn btn-secondary btn-full">Connect YouTube Music</button>
           </div>
 
-          <!-- Section C: Playlist Preferences -->
+          <!-- Section C: Preferences & Download Folder -->
           <div class="settings-section">
-            <h4>3. Playlist Naming Prefix</h4>
+            <h4>3. Folders & Preferences</h4>
             <div class="form-group">
               <label for="inputPlaylistPrefix">Prefix for Generated Playlists</label>
               <input type="text" id="inputPlaylistPrefix" value="SoundSort: " placeholder="e.g. SoundSort: or [AI] ">
+            </div>
+            <div class="form-group">
+              <label for="inputDownloadFolder">Default Downloads Directory</label>
+              <input type="text" id="inputDownloadFolder" value="downloads" placeholder="e.g. downloads or C:\Users\Felix\Music\Downloads">
             </div>
           </div>
 
@@ -364,6 +493,27 @@ Overmono - Good Lies" rows="4"></textarea>
         <div class="modal-footer">
           <button class="btn btn-ghost" data-close="settingsModal">Cancel</button>
           <button id="btnSaveSettings" class="btn btn-primary">Save Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Scan Local Folder -->
+    <div class="modal-backdrop hidden" id="scanLocalModal">
+      <div class="modal-dialog glass-modal">
+        <div class="modal-header">
+          <h3>💾 Scan Local Music Folder</h3>
+          <button class="modal-close" data-close="scanLocalModal" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="section-desc">Enter the folder path containing your audio files (.mp3, .flac, .m4a, .ogg) to import them into SoundSort:</p>
+          <div class="form-group">
+            <label for="modalInputScanPath">Folder Path</label>
+            <input type="text" id="modalInputScanPath" value="C:\Users\Felix\Music" placeholder="C:\Users\Felix\Music">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost" data-close="scanLocalModal">Cancel</button>
+          <button id="btnConfirmScanLocal" class="btn btn-primary">Start Scanning</button>
         </div>
       </div>
     </div>
@@ -469,6 +619,7 @@ Overmono - Good Lies" rows="4"></textarea>
               <input type="text" id="inspectorSearch" placeholder="Filter songs in this playlist...">
             </div>
             <div class="inspector-btns">
+              <button id="btnInspectorDownloadAll" class="btn btn-secondary btn-sm" title="Download all playlist songs to local MP3 with ID3 tags">⬇️ Download Local MP3s</button>
               <button id="btnInspectorAddGenre" class="btn btn-secondary btn-sm">➕ Add Entire Genre</button>
               <button id="btnInspectorExportYT" class="btn btn-yt-action btn-sm">
                 <span class="spinner hidden" id="inspectorExportSpinner"></span>

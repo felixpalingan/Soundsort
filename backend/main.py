@@ -9,6 +9,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception:
+    pass
+
 from backend.services.storage import (
     TrackItem, WebPlaylist, AppSettings, get_settings, save_settings,
     get_all_tracks, save_all_tracks, add_tracks, update_track,
@@ -20,6 +26,8 @@ from backend.services.storage import (
 from backend.services.importer import MusicImporter, clean_track_metadata
 from backend.services.ai_classifier import AIClassifier
 from backend.services.ytmusic_sync import YTMusicSyncService
+from backend.services.local_audio import scan_local_directory, write_tags_to_file, organize_files_by_genre
+from backend.services.downloader import download_track_audio, DOWNLOADS_DIR
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("soundsort")
@@ -47,6 +55,8 @@ class SettingsUpdateRequest(BaseModel):
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = None
     playlist_prefix: Optional[str] = None
+    music_directory: Optional[str] = None
+    download_directory: Optional[str] = None
 
 class YTAuthRequest(BaseModel):
     headers_raw: str
@@ -86,6 +96,21 @@ class SyncRequest(BaseModel):
     subgenres: List[str]
     playlist_prefix: Optional[str] = None
 
+class ScanLocalRequest(BaseModel):
+    directory_path: str
+
+class TagLocalRequest(BaseModel):
+    track_ids: Optional[List[str]] = None
+
+class OrganizeLocalRequest(BaseModel):
+    target_directory: str
+    copy_instead_of_move: bool = False
+    track_ids: Optional[List[str]] = None
+
+class DownloadBatchRequest(BaseModel):
+    track_ids: List[str]
+    output_directory: Optional[str] = None
+
 
 @app.get("/api/status")
 def get_system_status():
@@ -97,18 +122,23 @@ def get_system_status():
     total_tracks = len(tracks)
     classified_tracks = len([t for t in tracks if t.sub_genre and t.sub_genre != "General" and t.main_genre != "Uncategorized"])
     synced_tracks = len([t for t in tracks if t.is_synced])
+    local_tracks = len([t for t in tracks if t.is_local])
+    tagged_tracks = len([t for t in tracks if t.is_tagged])
     
-    unique_subgenres = list(set([t.sub_genre for t in tracks if t.sub_genre]))
-
+    subgenres = sorted(list(set([t.sub_genre for t in tracks if t.sub_genre and t.sub_genre != "General"])))
+    
     return {
-        "gemini_configured": bool(settings.gemini_api_key),
+        "gemini_configured": bool(settings.gemini_api_key or os.getenv("GEMINI_API_KEY")),
         "ytmusic_connected": is_yt_connected,
         "total_tracks": total_tracks,
         "total_playlists": len(playlists),
         "classified_tracks": classified_tracks,
         "synced_tracks": synced_tracks,
-        "total_subgenres": len(unique_subgenres),
-        "subgenres": sorted(unique_subgenres)
+        "local_tracks": local_tracks,
+        "tagged_tracks": tagged_tracks,
+        "total_subgenres": len(subgenres),
+        "subgenres": subgenres,
+        "download_directory": str(DOWNLOADS_DIR)
     }
 
 @app.get("/api/settings")
@@ -750,6 +780,257 @@ def api_create_custom_playlist(req: CustomPlaylistRequest):
     except Exception as e:
         logger.error(f"Failed to create custom playlist: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# -------------------------------------------------------------
+# Local Audio Files & Tagging Endpoints
+# -------------------------------------------------------------
+@app.post("/api/local/scan")
+def api_scan_local_folder(req: ScanLocalRequest):
+    """
+    Scan a local directory for audio files (.mp3, .flac, .m4a, .ogg) and add them to the library.
+    """
+    target_dir = req.directory_path.strip()
+    if not target_dir or not os.path.isdir(target_dir):
+        raise HTTPException(status_code=400, detail=f"Directory path not found: '{target_dir}'")
+
+    try:
+        scanned_tracks = scan_local_directory(target_dir)
+        if not scanned_tracks:
+            return {"success": True, "total_scanned": 0, "newly_added": 0, "message": "No supported audio files found."}
+
+        # Convert to TrackItem models
+        new_track_models = []
+        for raw in scanned_tracks:
+            item = TrackItem(
+                id=raw["id"],
+                title=raw["title"],
+                artist=raw["artist"],
+                album=raw.get("album", ""),
+                source_platform="local",
+                main_genre=raw.get("main_genre", "Other"),
+                sub_genre=raw.get("sub_genre", "Uncategorized"),
+                assigned_playlist=raw.get("assigned_playlist", ""),
+                is_local=True,
+                file_path=raw["file_path"],
+                is_tagged=False
+            )
+            new_track_models.append(item)
+
+        added = add_tracks(new_track_models)
+        return {
+            "success": True,
+            "total_scanned": len(scanned_tracks),
+            "newly_added": len(added),
+            "message": f"Successfully scanned {len(scanned_tracks)} audio files ({len(added)} new)."
+        }
+    except Exception as e:
+        logger.error(f"Failed scanning local directory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/local/tag-track/{track_id}")
+def api_tag_single_local_track(track_id: str):
+    """
+    Write current AI genre/subgenre metadata directly to a local audio file on disk.
+    """
+    all_tracks = get_all_tracks()
+    tr = next((t for t in all_tracks if t.id == track_id), None)
+    if not tr:
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    if not tr.is_local or not tr.file_path or not os.path.exists(tr.file_path):
+        raise HTTPException(status_code=400, detail=f"Local audio file does not exist at {tr.file_path}")
+
+    ok = write_tags_to_file(
+        file_path=tr.file_path,
+        title=tr.title,
+        artist=tr.artist,
+        genre=tr.main_genre or "Other",
+        sub_genre=tr.sub_genre or tr.assigned_playlist or "General",
+        album=tr.album or "",
+        vibe=tr.vibe or ""
+    )
+
+    if not ok:
+        raise HTTPException(status_code=500, detail="Failed writing audio tags to file.")
+
+    tr.is_tagged = True
+    save_all_tracks(all_tracks)
+    return {"success": True, "message": f"Tags written to {os.path.basename(tr.file_path)}"}
+
+@app.post("/api/local/tag-all")
+def api_tag_all_local_tracks(req: TagLocalRequest):
+    """
+    Bulk write ID3/audio tags to all classified local tracks in the library.
+    """
+    all_tracks = get_all_tracks()
+    target_ids = set(req.track_ids) if req.track_ids else None
+
+    tagged_count = 0
+    errors = []
+
+    for tr in all_tracks:
+        if not tr.is_local or not tr.file_path or not os.path.exists(tr.file_path):
+            continue
+        if target_ids and tr.id not in target_ids:
+            continue
+
+        ok = write_tags_to_file(
+            file_path=tr.file_path,
+            title=tr.title,
+            artist=tr.artist,
+            genre=tr.main_genre or "Other",
+            sub_genre=tr.sub_genre or tr.assigned_playlist or "General",
+            album=tr.album or "",
+            vibe=tr.vibe or ""
+        )
+        if ok:
+            tr.is_tagged = True
+            tagged_count += 1
+        else:
+            errors.append(f"Failed tagging {os.path.basename(tr.file_path)}")
+
+    save_all_tracks(all_tracks)
+    return {
+        "success": True,
+        "tagged_count": tagged_count,
+        "errors": errors,
+        "message": f"Successfully tagged {tagged_count} local audio files with AI genres!"
+    }
+
+@app.post("/api/local/organize")
+def api_organize_local_files(req: OrganizeLocalRequest):
+    """
+    Organize local audio files into subfolders by their AI genre/subgenre.
+    """
+    all_tracks = get_all_tracks()
+    target_ids = set(req.track_ids) if req.track_ids else None
+    
+    selected_tracks_dict = [
+        tr.model_dump() for tr in all_tracks 
+        if tr.is_local and tr.file_path and os.path.exists(tr.file_path) and (not target_ids or tr.id in target_ids)
+    ]
+
+    if not selected_tracks_dict:
+        raise HTTPException(status_code=400, detail="No local tracks available to organize.")
+
+    result = organize_files_by_genre(
+        tracks=selected_tracks_dict,
+        target_base_dir=req.target_directory,
+        copy_instead_of_move=req.copy_instead_of_move
+    )
+
+    # Update new file paths in storage if moved
+    if not req.copy_instead_of_move:
+        path_map = {t["id"]: t["file_path"] for t in selected_tracks_dict}
+        for tr in all_tracks:
+            if tr.id in path_map:
+                tr.file_path = path_map[tr.id]
+        save_all_tracks(all_tracks)
+
+    return result
+
+
+# -------------------------------------------------------------
+# Online Downloader Endpoints (yt-dlp with Auto-Tagging)
+# -------------------------------------------------------------
+@app.post("/api/downloader/download-track/{track_id}")
+def api_download_single_track(track_id: str, output_directory: Optional[str] = None):
+    """
+    Download a single online track audio file and embed full ID3 metadata tags.
+    """
+    all_tracks = get_all_tracks()
+    tr = next((t for t in all_tracks if t.id == track_id), None)
+    if not tr:
+        raise HTTPException(status_code=404, detail="Track not found")
+
+    try:
+        res = download_track_audio(tr.model_dump(), output_dir=output_directory)
+        tr.is_local = True
+        tr.file_path = res["file_path"]
+        tr.is_tagged = True
+        save_all_tracks(all_tracks)
+        return res
+    except Exception as e:
+        logger.error(f"Download failed for track {track_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/downloader/download-batch")
+def api_download_batch_tracks(req: DownloadBatchRequest):
+    """
+    Sequentially download a batch of tracks and auto-embed tags.
+    """
+    all_tracks = get_all_tracks()
+    track_map = {t.id: t for t in all_tracks}
+
+    downloaded = []
+    failed = []
+
+    for tid in req.track_ids:
+        tr = track_map.get(tid)
+        if not tr:
+            continue
+        try:
+            res = download_track_audio(tr.model_dump(), output_dir=req.output_directory)
+            tr.is_local = True
+            tr.file_path = res["file_path"]
+            tr.is_tagged = True
+            downloaded.append(res)
+        except Exception as e:
+            failed.append({"track_id": tid, "title": tr.title, "error": str(e)})
+
+    save_all_tracks(all_tracks)
+    return {
+        "success": True,
+        "downloaded_count": len(downloaded),
+        "failed_count": len(failed),
+        "downloaded": downloaded,
+        "failed": failed
+    }
+
+@app.post("/api/downloader/download-playlist/{playlist_id}")
+def api_download_playlist(playlist_id: str):
+    """
+    Download all tracks in a playlist into a dedicated playlist subfolder with full tags.
+    """
+    p = get_playlist_by_id(playlist_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    safe_pl_title = re.sub(r'[\\/*?:"<>|]', '_', p.title).strip() or "Playlist"
+    target_pl_dir = DOWNLOADS_DIR / safe_pl_title
+    target_pl_dir.mkdir(parents=True, exist_ok=True)
+
+    all_tracks = get_all_tracks()
+    track_map = {t.id: t for t in all_tracks}
+
+    downloaded = []
+    failed = []
+
+    for tid in p.track_ids:
+        tr = track_map.get(tid)
+        if not tr:
+            continue
+        try:
+            res = download_track_audio(tr.model_dump(), output_dir=str(target_pl_dir))
+            tr.is_local = True
+            tr.file_path = res["file_path"]
+            tr.is_tagged = True
+            downloaded.append(res)
+        except Exception as e:
+            failed.append({"track_id": tid, "title": tr.title, "error": str(e)})
+
+    save_all_tracks(all_tracks)
+    return {
+        "success": True,
+        "playlist_title": p.title,
+        "target_directory": str(target_pl_dir),
+        "downloaded_count": len(downloaded),
+        "failed_count": len(failed),
+        "downloaded": downloaded,
+        "failed": failed
+    }
+
 
 # Mount Frontend static files
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

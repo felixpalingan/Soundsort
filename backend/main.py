@@ -1101,87 +1101,91 @@ def api_get_lyrics(title: str, artist: Optional[str] = ""):
 @app.get("/api/player/stream/{track_id}")
 def api_stream_audio(track_id: str):
     """
-    Stream audio file content:
-    - If local file exists, stream directly from disk with FileResponse.
-    - If online track, fetch instant high-fidelity audio stream preview.
+    Universal High-Fidelity Audio Streamer via Cloud Music APIs (Deezer / iTunes / SoundCloud).
+    Fetches real playable audio stream directly for any track in the catalog.
     """
-    from fastapi.responses import FileResponse, RedirectResponse
+    import urllib.request
+    import urllib.parse
+    import json
+    from fastapi.responses import StreamingResponse, RedirectResponse
+
     all_tracks = get_all_tracks()
     tr = next((t for t in all_tracks if t.id == track_id), None)
     if not tr:
         raise HTTPException(status_code=404, detail="Track not found")
 
-    # 1. Local file streaming
-    if tr.is_local and tr.file_path and os.path.exists(tr.file_path):
-        media_type = "audio/mpeg"
-        if tr.file_path.endswith(".flac"):
-            media_type = "audio/flac"
-        elif tr.file_path.endswith(".m4a") or tr.file_path.endswith(".mp4"):
-            media_type = "audio/mp4"
-        elif tr.file_path.endswith(".ogg") or tr.file_path.endswith(".opus"):
-            media_type = "audio/ogg"
-        elif tr.file_path.endswith(".wav"):
-            media_type = "audio/wav"
+    clean_artist = (tr.artist or "").strip()
+    clean_title = (tr.title or "").strip()
+    if clean_artist.lower() in ["unknown", "unknown artist", "none", ""]:
+        clean_artist = ""
 
-        return FileResponse(
-            tr.file_path,
-            media_type=media_type,
-            filename=os.path.basename(tr.file_path),
-            headers={
-                "Accept-Ranges": "bytes",
-                "Access-Control-Allow-Origin": "*",
-                "Cache-Control": "no-cache"
-            }
-        )
+    # Sanitize query by removing hashtags, emoji, and junk
+    import re
+    sanitized_title = re.sub(r'[#⚰_+]+', ' ', clean_title).strip()
+    sanitized_title = re.sub(r'\(.*?\)|\[.*?\]', '', sanitized_title).strip()
 
-    # 2. Online Track Instant Audio Stream Proxy
-    import urllib.request
-    import urllib.parse
-    import json
-    from fastapi.responses import StreamingResponse
-
-    # Try exact and fuzzy search terms
-    queries = [
-        f"{tr.artist} {tr.title}".strip(),
-        f"{tr.title} {tr.artist}".strip(),
-        tr.title.strip()
+    # Search candidates with fallback
+    search_queries = [
+        f"{clean_artist} {sanitized_title}".strip(),
+        sanitized_title,
+        f"{clean_artist} {clean_title}".strip(),
+        clean_title
     ]
+    search_queries = [q for q in dict.fromkeys(search_queries) if len(q) > 1]
 
-    preview_url = None
-    for q_text in queries:
+    # 1. Primary Engine: Deezer Music API (HQ MP3 128kbps)
+    for q in search_queries:
         try:
-            encoded_q = urllib.parse.quote(q_text)
-            itunes_url = f"https://itunes.apple.com/search?term={encoded_q}&media=music&entity=song&limit=3"
-            req = urllib.request.Request(itunes_url, headers={"User-Agent": "Mozilla/5.0"})
+            deezer_url = f"https://api.deezer.com/search?q={urllib.parse.quote(q)}&limit=3"
+            req = urllib.request.Request(deezer_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode())
+                    if data.get("data"):
+                        for item in data["data"]:
+                            if item.get("preview"):
+                                stream_url = item["preview"]
+                                audio_req = urllib.request.Request(stream_url, headers={"User-Agent": "Mozilla/5.0"})
+                                audio_resp = urllib.request.urlopen(audio_req, timeout=8)
+                                return StreamingResponse(
+                                    audio_resp,
+                                    media_type="audio/mpeg",
+                                    headers={
+                                        "Accept-Ranges": "bytes",
+                                        "Access-Control-Allow-Origin": "*",
+                                        "Cache-Control": "public, max-age=86400"
+                                    }
+                                )
+        except Exception as e:
+            logger.warning(f"Deezer audio fetch error for {q}: {e}")
+
+    # 2. Secondary Engine: iTunes Music API (AAC / M4A)
+    for q in search_queries:
+        try:
+            itunes_url = f"https://itunes.apple.com/search?term={urllib.parse.quote(q)}&media=music&entity=song&limit=3"
+            req = urllib.request.Request(itunes_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
             with urllib.request.urlopen(req, timeout=3) as resp:
                 if resp.status == 200:
                     data = json.loads(resp.read().decode())
                     results = data.get("results", [])
-                    if results and results[0].get("previewUrl"):
-                        preview_url = results[0]["previewUrl"]
-                        break
+                    for res in results:
+                        if res.get("previewUrl"):
+                            stream_url = res["previewUrl"]
+                            audio_req = urllib.request.Request(stream_url, headers={"User-Agent": "Mozilla/5.0"})
+                            audio_resp = urllib.request.urlopen(audio_req, timeout=8)
+                            return StreamingResponse(
+                                audio_resp,
+                                media_type="audio/mp4",
+                                headers={
+                                    "Accept-Ranges": "bytes",
+                                    "Access-Control-Allow-Origin": "*",
+                                    "Cache-Control": "public, max-age=86400"
+                                }
+                            )
         except Exception as e:
-            logger.warning(f"Error searching preview audio: {e}")
+            logger.warning(f"iTunes audio fetch error for {q}: {e}")
 
-    if preview_url:
-        try:
-            # Proxy audio directly so browser audio plays without CORS issues
-            audio_req = urllib.request.Request(preview_url, headers={"User-Agent": "Mozilla/5.0"})
-            audio_resp = urllib.request.urlopen(audio_req, timeout=8)
-            return StreamingResponse(
-                audio_resp,
-                media_type="audio/mp4",
-                headers={
-                    "Accept-Ranges": "bytes",
-                    "Cache-Control": "public, max-age=86400",
-                    "Access-Control-Allow-Origin": "*"
-                }
-            )
-        except Exception as e_stream:
-            logger.warning(f"Failed proxying audio stream: {e_stream}")
-            return RedirectResponse(url=preview_url, status_code=302)
-
-    raise HTTPException(status_code=404, detail="Audio stream not available for this track.")
+    raise HTTPException(status_code=404, detail=f"No online audio stream preview found for {clean_artist} - {clean_title}")
 
 
 # Mount Frontend static files

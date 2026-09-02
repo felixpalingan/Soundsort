@@ -8,39 +8,37 @@ web
 
 ## Users
 
-Music listeners, playlist curators, and power users with extensive music libraries across Spotify, YouTube Music, SoundCloud, or local files who need an effortless, intelligent way to categorize tracks into granular subgenres and export them directly to organized YouTube Music playlists.
+Audiophiles, music collectors, playlist curators, and power listeners with multi-source libraries (Spotify, YouTube Music, SoundCloud, and local files) who want an all-in-one Hi-Fi music suite to listen to vinyl-style audio with synchronized lyrics, organize songs with Gemini AI, tag physical audio files on disk, download tracks with auto-metadata, and sync playlists to YouTube Music.
 
 ## Product Purpose
 
-SoundSort eliminates the friction of manual playlist curation by combining Google Gemini AI classification with a real-time, interactive Web Playlists Studio that streams batches of songs directly into YouTube Music.
+SoundSort is a modular Mega App that bridges analog music culture with modern AI curation: featuring a dedicated Hi-Fi Turntable & Synced Lyrics Player, deep Gemini AI Genre Categorization, local ID3 Audio Tagging & Folder Sorting, High-Speed Online Audio Downloader, and Web Playlists Studio with YouTube Music Sync.
 
 ## Positioning
 
-A zero-friction, local-first musicological organizer with AI-powered multi-source ingestion and live batch streaming to YouTube Music playlists without hitting rate or session expiration limits.
+A zero-friction, modular Hi-Fi audio workbench that unifies music playback, real-time synced lyrics, physical audio file tagging, fast downloading, and AI-driven playlist curation without clutter.
 
 ## Operating Context
 
-Runs as a local FastAPI backend + Vanilla JS/CSS glassmorphic dark UI dashboard with real-time Server-Sent Events (SSE) for AI streaming and direct YouTube Music API integration.
+Runs as a local FastAPI backend + Vanilla JS/CSS Hi-Fi Vinylist dashboard with modular single-page views (`#player`, `#analyzer`, `#tagger`, `#downloader`, `#playlists`), persistent global bottom mini-player, real-time LRCLIB synced lyrics engine, and local ID3 tagging via Mutagen & FFmpeg.
 
-## Capabilities and Constraints
+## Core Modules & Capabilities
 
-- **Multi-Source Ingestion**: Ingests `.csv` files, Spotify/SoundCloud/YouTube links, YouTube Music Liked Songs, or raw text lists (`Artist - Title`).
-- **AI Classification**: Uses Google Gemini models (`gemini-3.7-flash`, `gemini-3.5-flash`, etc.) with multi-model fallback and streaming progress.
-- **Web Playlists Studio**: 
-  - Create and manage playlists on the web.
-  - One-click bulk genre dump to playlists.
-  - Checkbox multi-select and individual song addition.
-  - Auto-generate playlists from all detected genres.
-- **Streaming YouTube Export**: Pushes songs to YouTube Music in small real-time batches to avoid cookie/auth timeouts and preserve track order.
-- **Privacy & Local State**: Stores track classifications locally in `db.json` and playlists in `playlists.json`; secrets are protected via `.gitignore`.
+- **1. 🎵 Hi-Fi Vinyl & Synced Lyrics Player (`#player`)**: Grand turntable deck with spinning vinyl record, precision tonearm with red LED cartridge, analog Pitch & Volume rotary knobs, circular time arc, ultra-bold poster typography, and real-time synchronized LRC lyrics with auto-scrolling and line seek.
+- **2. 🧠 AI Genre Analyzer & Classifier (`#analyzer`)**: Multi-source ingestion (links, CSV, text, YT Likes), Gemini 3.7 Flash batch classification with live SSE progress, sub-genre merging, and interactive card/table sorting matrix.
+- **3. 🏷️ Local File ID3 Tagger & Organizer (`#tagger`)**: Scans local PC audio folders (`.mp3`, `.flac`, `.m4a`, `.ogg`, `.wav`), 1-click batch embed ID3v2.4/Vorbis tags directly to disk, and organizes files into genre subfolders (`Music/Sorted/[Genre]/`).
+- **4. ⬇️ High-Speed Audio Downloader (`#downloader`)**: Downloads online streams (YouTube/SoundCloud/Spotify) to high-bitrate MP3 with auto-embedded ID3 tags, artwork, and AI genres.
+- **5. 📑 Web Playlists Studio & YT Sync (`#playlists`)**: Interactive web playlist curation, 1-click whole genre dumping, custom vibe mood builder, streaming YouTube Music sync, and 1-click bulk playlist downloading.
+- **🎚️ Persistent Global Mini-Player**: Bottom playback bar active across all pages for uninterrupted listening.
 
 ## Brand Commitments
 
-- **Aesthetic**: Modern dark studio UI with glassmorphism, clean typography, vibrant neon accent touches, and WCAG-compliant legibility.
-- **Tone**: High-energy, professional, music-centric, and snappy.
+- **Aesthetic**: Hi-Fi Analog Vinylist & Warm Cream Poster Typography (inspired by classic turntable decks, bold condensed typefaces, and analog red LED accents).
+- **Tone**: Audiophile-grade, analog-warm, responsive, and precise.
+- **Accessibility**: 100% WCAG-compliant contrast, smooth hardware-accelerated GPU animations, and zero layout thrash.
 
 ## Product Principles
 
-1. **User Control First**: AI proposes genre classifications and playlist structures; the user can freely inspect, modify, merge, or remove tracks before exporting.
-2. **Reliable & Resilient Syncing**: Commit data in streaming batches so no work is lost if sessions or network connections drop.
-3. **Frictionless Workflow**: Support both 1-click automated workflows (auto-create playlists from genres) and granular manual curation (checkbox selectors, inspector drawer).
+1. **Modular Clarity (Zero Clutter)**: Each feature lives in a dedicated, distraction-free module while sharing a unified global music state and persistent player.
+2. **True Physical Ownership**: Give users the power to write metadata directly into their physical audio files and store music locally.
+3. **Instant Visual Delight**: Every interaction — from the spinning vinyl disc to the real-time highlighted lyrics and analog rotary knobs — feels tactile, alive, and premium.

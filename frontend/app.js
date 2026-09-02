@@ -1948,6 +1948,47 @@ function setupEventListeners() {
     });
   }
 
+  // Volume Knob interaction
+  if (elements.knobVolume) {
+    elements.knobVolume.addEventListener('click', () => {
+      state.volumePercent = state.volumePercent >= 100 ? 25 : state.volumePercent + 25;
+      const deg = ((state.volumePercent / 100) * 270) - 135;
+      elements.knobVolume.style.transform = `rotate(${deg}deg)`;
+      if (elements.volumeValueLabel) elements.volumeValueLabel.textContent = `${state.volumePercent}%`;
+      if (elements.nativeAudioPlayer) elements.nativeAudioPlayer.volume = state.volumePercent / 100;
+      showToast(`Master Volume: ${state.volumePercent}%`, 'info');
+    });
+  }
+
+  // Circular Arc Time Scrubber Seek
+  const arcTrackLine = document.querySelector('.arc-track-line');
+  if (arcTrackLine) {
+    arcTrackLine.addEventListener('click', (e) => {
+      const rect = arcTrackLine.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+      state.currentTime = Math.floor(ratio * (state.duration || 228));
+      if (elements.nativeAudioPlayer && state.currentCuedTrack?.is_local) {
+        elements.nativeAudioPlayer.currentTime = state.currentTime;
+      }
+      updatePlaybackPosition();
+    });
+  }
+
+  // Bottom Global Scrubber Seek
+  if (elements.globalScrubberBar) {
+    elements.globalScrubberBar.addEventListener('click', (e) => {
+      const rect = elements.globalScrubberBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+      state.currentTime = Math.floor(ratio * (state.duration || 228));
+      if (elements.nativeAudioPlayer && state.currentCuedTrack?.is_local) {
+        elements.nativeAudioPlayer.currentTime = state.currentTime;
+      }
+      updatePlaybackPosition();
+    });
+  }
+
   // Importer & AI Classifier (Module 2)
   if (elements.btnImport) elements.btnImport.addEventListener('click', handleImportText);
   if (elements.btnUploadCsv && elements.fileUploadInput) {

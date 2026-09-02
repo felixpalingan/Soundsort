@@ -386,6 +386,35 @@ class MusicImporter:
             except Exception as e:
                 logger.warning(f"ytmusicapi playlist extraction for {playlist_id} failed: {e}. Trying fallback...")
 
+        # 2. Check if single YouTube video URL - Use reliable YouTube oEmbed API first
+        video_match = re.search(r"(?:v=|youtu\.be/|shorts/|embed/)([a-zA-Z0-9_-]{11})", url)
+        if video_match:
+            v_id = video_match.group(1)
+            try:
+                import urllib.request
+                import urllib.parse
+                clean_watch_url = f"https://www.youtube.com/watch?v={v_id}"
+                oembed_url = f"https://www.youtube.com/oembed?url={urllib.parse.quote(clean_watch_url)}&format=json"
+                req = urllib.request.Request(oembed_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    if resp.status == 200:
+                        data = json.loads(resp.read().decode())
+                        raw_title = data.get("title", "")
+                        author = data.get("author_name", "Unknown Artist")
+                        thumb = data.get("thumbnail_url", f"https://i.ytimg.com/vi/{v_id}/hqdefault.jpg")
+                        c_title, c_artist = clean_track_metadata(raw_title, author)
+                        return [TrackItem(
+                            title=c_title,
+                            artist=c_artist,
+                            thumbnail=thumb,
+                            source_platform="youtube",
+                            source_url=clean_watch_url,
+                            matched_yt_id=v_id,
+                            matched_yt_title=raw_title
+                        )]
+            except Exception as e_oe:
+                logger.warning(f"YouTube oEmbed extraction failed for {v_id}: {e_oe}")
+
         return self._import_with_ytdlp(url, "youtube")
 
     def _import_with_ytdlp(self, url: str, platform: str) -> List[TrackItem]:

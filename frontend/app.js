@@ -253,9 +253,9 @@ async function initApp() {
   await loadSettings();
   await refreshAll();
   
-  // Set default vinyl track if available
+  // Set default vinyl track if available without blocking autoplay
   if (state.allTracks.length > 0) {
-    cueTrackOnVinyl(state.allTracks[0].id);
+    cueTrackOnVinyl(state.allTracks[0].id, false);
   }
 }
 
@@ -382,7 +382,7 @@ function jumpToLyricTime(timeSec) {
   updatePlaybackPosition();
 }
 
-function cueTrackOnVinyl(trackId) {
+function cueTrackOnVinyl(trackId, autoPlay = true) {
   const tr = state.allTracks.find(t => t.id === trackId);
   if (!tr) return;
   state.currentCuedTrack = tr;
@@ -415,7 +415,11 @@ function cueTrackOnVinyl(trackId) {
   updatePlaybackPosition();
   fetchAndRenderLyrics(tr.title, tr.artist);
 
-  startVinylSpin();
+  if (autoPlay) {
+    startVinylSpin();
+  } else {
+    stopVinylSpin();
+  }
 }
 
 function startVinylSpin() {

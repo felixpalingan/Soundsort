@@ -1125,26 +1125,52 @@ def api_stream_audio(track_id: str):
 
         return FileResponse(tr.file_path, media_type=media_type, filename=os.path.basename(tr.file_path))
 
-    # 2. Online Track Instant Audio Stream
+    # 2. Online Track Instant Audio Stream Proxy
     import urllib.request
     import urllib.parse
     import json
+    from fastapi.responses import StreamingResponse
 
-    search_query = f"{tr.artist} {tr.title}".strip()
-    encoded_q = urllib.parse.quote(search_query)
-    itunes_url = f"https://itunes.apple.com/search?term={encoded_q}&media=music&entity=song&limit=1"
+    # Try exact and fuzzy search terms
+    queries = [
+        f"{tr.artist} {tr.title}".strip(),
+        f"{tr.title} {tr.artist}".strip(),
+        tr.title.strip()
+    ]
 
-    try:
-        req = urllib.request.Request(itunes_url, headers={"User-Agent": "SoundSort-AI/1.0"})
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            if resp.status == 200:
-                data = json.loads(resp.read().decode())
-                results = data.get("results", [])
-                if results and results[0].get("previewUrl"):
-                    preview_url = results[0]["previewUrl"]
-                    return RedirectResponse(url=preview_url, status_code=302)
-    except Exception as e:
-        logger.warning(f"Failed fetching online audio stream for {search_query}: {e}")
+    preview_url = None
+    for q_text in queries:
+        try:
+            encoded_q = urllib.parse.quote(q_text)
+            itunes_url = f"https://itunes.apple.com/search?term={encoded_q}&media=music&entity=song&limit=3"
+            req = urllib.request.Request(itunes_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status == 200:
+                    data = json.loads(resp.read().decode())
+                    results = data.get("results", [])
+                    if results and results[0].get("previewUrl"):
+                        preview_url = results[0]["previewUrl"]
+                        break
+        except Exception as e:
+            logger.warning(f"Error searching preview audio: {e}")
+
+    if preview_url:
+        try:
+            # Proxy audio directly so browser audio plays without CORS issues
+            audio_req = urllib.request.Request(preview_url, headers={"User-Agent": "Mozilla/5.0"})
+            audio_resp = urllib.request.urlopen(audio_req, timeout=8)
+            return StreamingResponse(
+                audio_resp,
+                media_type="audio/mp4",
+                headers={
+                    "Accept-Ranges": "bytes",
+                    "Cache-Control": "public, max-age=86400",
+                    "Access-Control-Allow-Origin": "*"
+                }
+            )
+        except Exception as e_stream:
+            logger.warning(f"Failed proxying audio stream: {e_stream}")
+            return RedirectResponse(url=preview_url, status_code=302)
 
     raise HTTPException(status_code=404, detail="Audio stream not available for this track.")
 

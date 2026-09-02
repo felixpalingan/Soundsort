@@ -1,10 +1,15 @@
-// SoundSort AI - Frontend Controller & State Management
+// SoundSort AI - Modern Frontend Controller & Playlist Studio
 
 const API_BASE = '/api';
 
 const state = {
   allTracks: [],
   tracks: [],
+  playlists: [],
+  selectedTrackIds: new Set(),
+  activeTab: 'library', // 'library' | 'playlists'
+  currentInspectingPlaylist: null,
+  targetPlaylistForAdd: null,
   allMainGenres: [],
   allSubgenres: [],
   systemStatus: null,
@@ -26,24 +31,27 @@ function getSafeThumb(url) {
   return encodeURI(url.trim());
 }
 
-const DEMO_TRACKS_INPUT = `https://open.spotify.com/track/1Qrg8KqiBpW477faSu8NnW
-Skrillex & Fred again.. - Rumble
-KSLV Noh - Disaster
-Bicep - Glue
-American Football - Never Meant
-Lorna Shore - To the Hellfire
-Gunna - fukumean
-Peggy Gou - (It Goes Like) Nanana
-Deftones - Be Quiet and Drive (Far Away)
-Sub Focus & Dimension - Desire
-Charli xcx - Von dutch
-Overmono - Good Lies
-Tatsuro Yamashita - Sparkle
-Ken Carson - Overseas
-Massive Attack - Teardrop`;
+const DEMO_TRACKS_INPUT = `Arctic Monkeys - 505
+Paramore - Misery Business
+6arelyhuman - Hands Up!
+Sheila On 7 - Dan
+Kordhell - Murder In My Mind
+S3RL - Bass Slut
+YOASOBI - Racing Into The Night
+.Feast - Peradaban
+Slipknot - Psychosocial
+Tenxi - Semangat Pagi`;
 
 // DOM Elements
 const elements = {
+  // Navigation
+  navTabLibrary: document.getElementById('navTabLibrary'),
+  navTabPlaylists: document.getElementById('navTabPlaylists'),
+  sectionLibrary: document.getElementById('sectionLibrary'),
+  sectionPlaylists: document.getElementById('sectionPlaylists'),
+  tabCountLibrary: document.getElementById('tabCountLibrary'),
+  tabCountPlaylists: document.getElementById('tabCountPlaylists'),
+
   // Status Chips
   geminiStatusChip: document.getElementById('geminiStatusChip'),
   ytStatusChip: document.getElementById('ytStatusChip'),
@@ -76,7 +84,7 @@ const elements = {
   aiProgressBarFill: document.getElementById('aiProgressBarFill'),
   aiProgressSubtext: document.getElementById('aiProgressSubtext'),
 
-  // Curation Studio
+  // Library Studio
   filterSearch: document.getElementById('filterSearch'),
   filterMainGenre: document.getElementById('filterMainGenre'),
   filterSubGenre: document.getElementById('filterSubGenre'),
@@ -84,7 +92,53 @@ const elements = {
   btnViewTable: document.getElementById('btnViewTable'),
   studioContent: document.getElementById('studioContent'),
   btnOpenMergeModal: document.getElementById('btnOpenMergeModal'),
+  btnQuickCreatePlaylistFromFilter: document.getElementById('btnQuickCreatePlaylistFromFilter'),
   btnOpenCustomPlaylistModal: document.getElementById('btnOpenCustomPlaylistModal'),
+
+  // Web Playlists Studio View
+  playlistsGrid: document.getElementById('playlistsGrid'),
+  btnOpenCreatePlaylistModal: document.getElementById('btnOpenCreatePlaylistModal'),
+  btnAutoGeneratePlaylists: document.getElementById('btnAutoGeneratePlaylists'),
+  btnExportAllPlaylists: document.getElementById('btnExportAllPlaylists'),
+
+  // Sticky Multi-Selection Bar
+  selectionActionBar: document.getElementById('selectionActionBar'),
+  selectedCountBadge: document.getElementById('selectedCountBadge'),
+  btnAddSelectedToPlaylist: document.getElementById('btnAddSelectedToPlaylist'),
+  btnDeselectAllTracks: document.getElementById('btnDeselectAllTracks'),
+
+  // Create Playlist Modal
+  createPlaylistModal: document.getElementById('createPlaylistModal'),
+  inputNewPlaylistTitle: document.getElementById('inputNewPlaylistTitle'),
+  inputNewPlaylistDesc: document.getElementById('inputNewPlaylistDesc'),
+  selectNewPlaylistGenre: document.getElementById('selectNewPlaylistGenre'),
+  btnConfirmCreatePlaylist: document.getElementById('btnConfirmCreatePlaylist'),
+
+  // Add to Playlist Modal
+  addToPlaylistModal: document.getElementById('addToPlaylistModal'),
+  addToPlaylistSubtext: document.getElementById('addToPlaylistSubtext'),
+  selectTargetPlaylist: document.getElementById('selectTargetPlaylist'),
+  inputQuickNewPlaylistTitle: document.getElementById('inputQuickNewPlaylistTitle'),
+  btnConfirmAddToPlaylist: document.getElementById('btnConfirmAddToPlaylist'),
+
+  // Add Entire Genre Modal
+  addGenreToPlaylistModal: document.getElementById('addGenreToPlaylistModal'),
+  addGenreToPlaylistDesc: document.getElementById('addGenreToPlaylistDesc'),
+  selectGenreToDump: document.getElementById('selectGenreToDump'),
+  btnConfirmAddGenreToPlaylist: document.getElementById('btnConfirmAddGenreToPlaylist'),
+
+  // Playlist Inspector Modal
+  playlistInspectorModal: document.getElementById('playlistInspectorModal'),
+  inspectorPlaylistTitle: document.getElementById('inspectorPlaylistTitle'),
+  inspectorPlaylistDesc: document.getElementById('inspectorPlaylistDesc'),
+  inspectorTrackCount: document.getElementById('inspectorTrackCount'),
+  inspectorSyncedBadge: document.getElementById('inspectorSyncedBadge'),
+  inspectorSearch: document.getElementById('inspectorSearch'),
+  inspectorTracksList: document.getElementById('inspectorTracksList'),
+  btnInspectorAddGenre: document.getElementById('btnInspectorAddGenre'),
+  btnInspectorExportYT: document.getElementById('btnInspectorExportYT'),
+  inspectorExportSpinner: document.getElementById('inspectorExportSpinner'),
+  inspectorYtLink: document.getElementById('inspectorYtLink'),
 
   // Custom Playlist Modal
   customPlaylistModal: document.getElementById('customPlaylistModal'),
@@ -115,21 +169,6 @@ const elements = {
   existingSubgenresList: document.getElementById('existingSubgenresList'),
   btnConfirmMerge: document.getElementById('btnConfirmMerge'),
 
-  // Sync Modal & Footer
-  btnOpenSyncModal: document.getElementById('btnOpenSyncModal'),
-  syncModal: document.getElementById('syncModal'),
-  syncSubgenresList: document.getElementById('syncSubgenresList'),
-  btnSelectAllSync: document.getElementById('btnSelectAllSync'),
-  btnDeselectAllSync: document.getElementById('btnDeselectAllSync'),
-  btnStartSync: document.getElementById('btnStartSync'),
-  syncSpinner: document.getElementById('syncSpinner'),
-  syncProgressBox: document.getElementById('syncProgressBox'),
-  syncProgressBar: document.getElementById('syncProgressBar'),
-  syncStatusMsg: document.getElementById('syncStatusMsg'),
-  syncResultsLog: document.getElementById('syncResultsLog'),
-  syncBarTitle: document.getElementById('syncBarTitle'),
-  syncBarDesc: document.getElementById('syncBarDesc'),
-
   toastContainer: document.getElementById('toastContainer')
 };
 
@@ -145,6 +184,7 @@ async function initApp() {
 async function refreshAll() {
   await loadStatus();
   await loadTracks();
+  await loadPlaylists();
 }
 
 // -------------------------------------------------------------
@@ -157,27 +197,16 @@ async function loadStatus() {
     const data = await res.json();
     state.systemStatus = data;
 
-    // Update Status Chips
     updateChip(elements.geminiStatusChip, data.gemini_configured, 'Gemini AI Ready', 'Gemini Not Set');
     updateChip(elements.ytStatusChip, data.ytmusic_connected, 'YT Music Connected', 'YT Music Offline');
 
-    // Update Counters
     elements.statTotalTracks.textContent = data.total_tracks;
     elements.statClassified.textContent = data.classified_tracks;
     elements.statSubgenres.textContent = data.total_subgenres;
     elements.statSynced.textContent = data.synced_tracks;
 
-    // Update Sync Bar text
-    if (data.total_subgenres > 0) {
-      elements.syncBarTitle.textContent = `${data.total_subgenres} Sub-genres Categorized`;
-      elements.syncBarDesc.textContent = `${data.total_tracks} total songs ready for YouTube Music export.`;
-    } else {
-      elements.syncBarTitle.textContent = 'Ready to Create Playlists';
-      elements.syncBarDesc.textContent = 'Import songs & run AI classification to generate sub-genre playlists.';
-    }
-
-    // Populate filter subgenres dropdown
-    populateSubgenreFilter(data.subgenres);
+    elements.tabCountLibrary.textContent = data.total_tracks;
+    elements.tabCountPlaylists.textContent = data.total_playlists || 0;
   } catch (err) {
     console.error('Failed to load status:', err);
   }
@@ -214,14 +243,10 @@ async function loadTracks() {
     const allTracks = await res.json();
     state.allTracks = allTracks;
 
-    // Master list of all unique genres across the entire library
     state.allMainGenres = Array.from(new Set(allTracks.map(t => t.main_genre).filter(Boolean))).sort();
     state.allSubgenres = Array.from(new Set(allTracks.map(t => t.sub_genre).filter(Boolean))).sort();
 
-    // Populate dropdowns while preserving options
     updateGenreFilterDropdowns();
-
-    // Apply current search/filters and render UI
     applyFiltersAndRender();
   } catch (err) {
     console.error('Error loading tracks:', err);
@@ -229,11 +254,23 @@ async function loadTracks() {
   }
 }
 
+async function loadPlaylists() {
+  try {
+    const res = await fetch(`${API_BASE}/playlists`);
+    if (!res.ok) return;
+    const playlists = await res.json();
+    state.playlists = playlists;
+    elements.tabCountPlaylists.textContent = playlists.length;
+    renderPlaylistsGrid();
+  } catch (err) {
+    console.error('Error loading playlists:', err);
+  }
+}
+
 function updateGenreFilterDropdowns() {
   const mainSelect = elements.filterMainGenre;
   const currentMain = state.filters.mainGenre || '';
 
-  // Main genres ALWAYS retains all available main genres
   mainSelect.innerHTML = '<option value="">All Main Genres</option>';
   state.allMainGenres.forEach(g => {
     const opt = document.createElement('option');
@@ -243,292 +280,714 @@ function updateGenreFilterDropdowns() {
   });
   mainSelect.value = currentMain;
 
-  // Sub-genres dropdown (contextually filtered by selected main genre if set, or shows all)
   const subSelect = elements.filterSubGenre;
   const currentSub = state.filters.subGenre || '';
 
   let availableSubs = state.allTracks;
   if (currentMain) {
-    availableSubs = availableSubs.filter(t => t.main_genre === currentMain);
+    availableSubs = availableSubs.filter(t => (t.main_genre || '').toLowerCase() === currentMain.toLowerCase());
   }
-  const uniqueSubs = Array.from(new Set(availableSubs.map(t => t.sub_genre).filter(Boolean))).sort();
+  const filteredSubgenres = Array.from(new Set(availableSubs.map(t => t.sub_genre).filter(Boolean))).sort();
 
   subSelect.innerHTML = '<option value="">All Sub-genres</option>';
-  uniqueSubs.forEach(s => {
+  filteredSubgenres.forEach(sub => {
     const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
+    opt.value = sub;
+    opt.textContent = sub;
     subSelect.appendChild(opt);
   });
-  subSelect.value = uniqueSubs.includes(currentSub) ? currentSub : '';
+  subSelect.value = currentSub;
 }
 
-function applyFiltersAndRender() {
-  let filtered = state.allTracks;
+// -------------------------------------------------------------
+// Tabs Navigation
+// -------------------------------------------------------------
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  if (tabName === 'library') {
+    elements.navTabLibrary.classList.add('active');
+    elements.navTabPlaylists.classList.remove('active');
+    elements.sectionLibrary.classList.add('active');
+    elements.sectionPlaylists.classList.remove('active');
+  } else {
+    elements.navTabLibrary.classList.remove('active');
+    elements.navTabPlaylists.classList.add('active');
+    elements.sectionLibrary.classList.remove('active');
+    elements.sectionPlaylists.classList.add('active');
+    renderPlaylistsGrid();
+  }
+}
 
-  const query = (state.filters.search || '').toLowerCase().trim();
-  if (query) {
+// -------------------------------------------------------------
+// Web Playlists Studio Rendering & Actions
+// -------------------------------------------------------------
+function renderPlaylistsGrid() {
+  const grid = elements.playlistsGrid;
+  if (!state.playlists || state.playlists.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px;">
+        <div class="empty-icon">📑</div>
+        <h3>No Web Playlists Created Yet</h3>
+        <p>Create a custom playlist or click <strong>⚡ Auto-Create From Genres</strong> to automatically turn your library genres into playlists!</p>
+        <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
+          <button class="btn btn-primary" onclick="openCreatePlaylistModal()">➕ Create New Playlist</button>
+          <button class="btn btn-secondary" onclick="autoGeneratePlaylists()">⚡ Auto-Create From Genres</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = '';
+  state.playlists.forEach(p => {
+    const card = document.createElement('div');
+    card.className = `playlist-card ${p.is_synced ? 'is-synced' : ''}`;
+    
+    const trackCount = p.track_count !== undefined ? p.track_count : (p.track_ids ? p.track_ids.length : 0);
+    const syncBadgeHtml = p.is_synced && p.yt_playlist_url
+      ? `<a href="${p.yt_playlist_url}" target="_blank" class="badge-synced" title="Open playlist on YouTube Music">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          YT Music ↗
+        </a>`
+      : `<span class="badge-draft">Web Draft</span>`;
+
+    // Preview preview songs
+    let previewHtml = '';
+    if (p.tracks_preview && p.tracks_preview.length > 0) {
+      previewHtml = `
+        <div class="playlist-mini-preview">
+          ${p.tracks_preview.map(t => `
+            <div class="playlist-mini-song">
+              <span class="bullet">&bull;</span>
+              <strong>${escapeHtml(t.artist)}</strong> - ${escapeHtml(t.title)}
+            </div>
+          `).join('')}
+          ${trackCount > p.tracks_preview.length ? `<div style="font-size: 0.7rem; color: var(--text-muted); padding-top: 2px;">+ ${trackCount - p.tracks_preview.length} more songs</div>` : ''}
+        </div>
+      `;
+    } else {
+      previewHtml = `
+        <div class="playlist-mini-preview" style="justify-content: center; align-items: center; color: var(--text-muted); font-size: 0.75rem;">
+          Empty playlist (Add songs below)
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div>
+        <div class="playlist-card-top">
+          <div>
+            <h3 class="playlist-card-title">${escapeHtml(p.title)}</h3>
+          </div>
+          ${syncBadgeHtml}
+        </div>
+        <p class="playlist-card-desc">${escapeHtml(p.description || 'Curated SoundSort Playlist')}</p>
+        
+        <div class="playlist-card-meta">
+          <span class="badge badge-subgenre">🎵 ${trackCount} songs</span>
+        </div>
+
+        ${previewHtml}
+      </div>
+
+      <div class="playlist-card-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openPlaylistInspector('${p.id}')" title="Inspect songs in this playlist">
+          👁 View & Edit (${trackCount})
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="openAddGenreModal('${p.id}')" title="Add all songs from a genre into this playlist">
+          ➕ Add Genre...
+        </button>
+        <button class="btn-yt-export" onclick="exportPlaylistToYT('${p.id}', this)" title="Export to YouTube Music">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          <span>Export to YT</span>
+        </button>
+        <button class="btn btn-ghost btn-sm" style="color: var(--accent-red); padding: 6px 8px;" onclick="deleteWebPlaylist('${p.id}')" title="Delete playlist">
+          🗑
+        </button>
+      </div>
+    `;
+
+    grid.appendChild(card);
+  });
+}
+
+// -------------------------------------------------------------
+// Playlists Actions (Create, Delete, Add Genre, Export)
+// -------------------------------------------------------------
+function openCreatePlaylistModal() {
+  elements.inputNewPlaylistTitle.value = '';
+  elements.inputNewPlaylistDesc.value = '';
+  
+  // Populate genres options
+  const select = elements.selectNewPlaylistGenre;
+  select.innerHTML = '<option value="">-- Start Empty (Add songs manually later) --</option>';
+  
+  // Collect unique genres
+  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
+  genres.forEach(g => {
+    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = `All songs from: ${g}`;
+      select.appendChild(opt);
+    }
+  });
+
+  openModal(elements.createPlaylistModal);
+}
+
+async function handleConfirmCreatePlaylist() {
+  const title = elements.inputNewPlaylistTitle.value.trim();
+  const desc = elements.inputNewPlaylistDesc.value.trim();
+  const prefillGenre = elements.selectNewPlaylistGenre.value;
+
+  if (!title) {
+    showToast('Please enter a playlist title', 'error');
+    return;
+  }
+
+  let trackIds = [];
+  if (prefillGenre) {
+    const targetName = prefillGenre.toLowerCase();
+    trackIds = state.allTracks
+      .filter(t => (t.assigned_playlist || '').toLowerCase() === targetName || (t.sub_genre || '').toLowerCase() === targetName || (t.main_genre || '').toLowerCase() === targetName)
+      .map(t => t.id);
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description: desc, track_ids: trackIds })
+    });
+    if (!res.ok) throw new Error('Failed to create playlist');
+    
+    closeModal(elements.createPlaylistModal);
+    showToast(`Created playlist "${title}" with ${trackIds.length} songs!`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteWebPlaylist(playlistId) {
+  if (!confirm('Are you sure you want to delete this web playlist?')) return;
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete playlist');
+    showToast('Playlist deleted', 'info');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function autoGeneratePlaylists() {
+  try {
+    showToast('⚡ Generating playlists from all genres...', 'info');
+    const res = await fetch(`${API_BASE}/playlists/auto-generate-from-genres`, { method: 'POST' });
+    if (!res.ok) throw new Error('Failed to auto-generate playlists');
+    const data = await res.json();
+    showToast(data.message, 'success');
+    await loadPlaylists();
+    await loadStatus();
+    switchTab('playlists');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function openAddGenreModal(playlistId) {
+  state.targetPlaylistForAdd = playlistId;
+  const p = state.playlists.find(x => x.id === playlistId);
+  elements.addGenreToPlaylistDesc.textContent = `Select a genre from your library to dump all its songs into "${p ? p.title : 'Playlist'}":`;
+
+  const select = elements.selectGenreToDump;
+  select.innerHTML = '';
+  
+  const genres = Array.from(new Set(state.allTracks.map(t => t.assigned_playlist || t.sub_genre || t.main_genre).filter(Boolean))).sort();
+  genres.forEach(g => {
+    if (g && g !== 'SKIP' && g !== 'General' && g !== 'Uncategorized') {
+      const count = state.allTracks.filter(t => (t.assigned_playlist || '').toLowerCase() === g.toLowerCase() || (t.sub_genre || '').toLowerCase() === g.toLowerCase() || (t.main_genre || '').toLowerCase() === g.toLowerCase()).length;
+      const opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = `${g} (${count} songs)`;
+      select.appendChild(opt);
+    }
+  });
+
+  openModal(elements.addGenreToPlaylistModal);
+}
+
+async function handleConfirmAddGenreToPlaylist() {
+  const playlistId = state.targetPlaylistForAdd;
+  const genreName = elements.selectGenreToDump.value;
+  if (!playlistId || !genreName) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}/add-genre`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ genre_name: genreName })
+    });
+    if (!res.ok) throw new Error('Failed to add genre to playlist');
+    const data = await res.json();
+    
+    closeModal(elements.addGenreToPlaylistModal);
+    showToast(`Added ${data.added_count} songs from "${genreName}"! Total: ${data.total_tracks} songs.`, 'success');
+    await loadPlaylists();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function exportPlaylistToYT(playlistId, btnElement) {
+  if (btnElement) {
+    btnElement.disabled = true;
+    btnElement.innerHTML = `⏳ <span>Exporting...</span>`;
+  }
+  
+  showToast('🚀 Syncing playlist to YouTube Music in real-time...', 'info');
+
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}/export-yt`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Export failed');
+
+    showToast(`🎉 Playlist "${data.title}" successfully exported to YouTube Music! (${data.added_count} songs)`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    console.error('Export error:', err);
+    showToast(err.message, 'error');
+  } finally {
+    if (btnElement) {
+      btnElement.disabled = false;
+      btnElement.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+        <span>Export to YT</span>
+      `;
+    }
+  }
+}
+
+async function exportAllPlaylistsToYT() {
+  if (!confirm('Export all web playlists to YouTube Music now?')) return;
+  const btn = elements.btnExportAllPlaylists;
+  btn.disabled = true;
+  btn.innerHTML = `<span>⏳ Exporting All Playlists...</span>`;
+
+  try {
+    showToast('🚀 Exporting all playlists to YouTube Music...', 'info');
+    const res = await fetch(`${API_BASE}/playlists/export-all-yt`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Bulk export failed');
+
+    showToast(`All playlists exported to YouTube Music!`, 'success');
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+      <span>Export All to YouTube Music</span>
+    `;
+  }
+}
+
+// -------------------------------------------------------------
+// Playlist Inspector Modal (View & Remove Tracks in Playlist)
+// -------------------------------------------------------------
+async function openPlaylistInspector(playlistId) {
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${playlistId}`);
+    if (!res.ok) throw new Error('Could not load playlist detail');
+    const p = await res.json();
+    state.currentInspectingPlaylist = p;
+
+    elements.inspectorPlaylistTitle.textContent = p.title;
+    elements.inspectorPlaylistDesc.textContent = p.description || 'No description';
+    elements.inspectorTrackCount.textContent = `${p.track_count} tracks`;
+    
+    if (p.is_synced && p.yt_playlist_url) {
+      elements.inspectorSyncedBadge.classList.remove('hidden');
+      elements.inspectorYtLink.classList.remove('hidden');
+      elements.inspectorYtLink.href = p.yt_playlist_url;
+    } else {
+      elements.inspectorSyncedBadge.classList.add('hidden');
+      elements.inspectorYtLink.classList.add('hidden');
+    }
+
+    elements.inspectorSearch.value = '';
+    renderInspectorTracksList(p.tracks || []);
+    openModal(elements.playlistInspectorModal);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function renderInspectorTracksList(tracksList) {
+  const container = elements.inspectorTracksList;
+  const q = elements.inspectorSearch.value.trim().toLowerCase();
+
+  let filtered = tracksList;
+  if (q) {
+    filtered = filtered.filter(t => t.title.toLowerCase().includes(q) || t.artist.toLowerCase().includes(q));
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">No songs found in this playlist</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map((t, idx) => `
+    <div class="inspector-track-item">
+      <div class="inspector-track-left">
+        <span class="inspector-track-idx">${idx + 1}</span>
+        <img class="inspector-track-thumb" src="${getSafeThumb(t.thumbnail)}" alt="cover">
+        <div class="inspector-track-info">
+          <div class="inspector-track-title">${escapeHtml(t.title)}</div>
+          <div class="inspector-track-artist">${escapeHtml(t.artist)} &bull; <span style="color: var(--accent-cyan);">${escapeHtml(t.sub_genre || t.main_genre || '')}</span></div>
+        </div>
+      </div>
+      <div class="inspector-track-right">
+        <button class="btn-remove-track" onclick="removeTrackFromCurrentPlaylist('${t.id}')" title="Remove song from playlist">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function removeTrackFromCurrentPlaylist(trackId) {
+  if (!state.currentInspectingPlaylist) return;
+  const pid = state.currentInspectingPlaylist.id;
+  try {
+    const res = await fetch(`${API_BASE}/playlists/${pid}/tracks/${trackId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to remove track');
+    
+    // Refresh inspector
+    await openPlaylistInspector(pid);
+    await loadPlaylists();
+    showToast('Song removed from playlist', 'info');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// -------------------------------------------------------------
+// Multi-Selection and Quick Add to Playlist
+// -------------------------------------------------------------
+function toggleTrackSelection(trackId) {
+  if (state.selectedTrackIds.has(trackId)) {
+    state.selectedTrackIds.delete(trackId);
+  } else {
+    state.selectedTrackIds.add(trackId);
+  }
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+function selectAllFilteredTracks() {
+  state.tracks.forEach(t => state.selectedTrackIds.add(t.id));
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+function deselectAllTracks() {
+  state.selectedTrackIds.clear();
+  updateSelectionBar();
+  updateCheckboxesState();
+}
+
+function updateSelectionBar() {
+  const bar = elements.selectionActionBar;
+  const count = state.selectedTrackIds.size;
+  elements.selectedCountBadge.textContent = count;
+  if (count > 0) {
+    bar.classList.remove('hidden');
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+function updateCheckboxesState() {
+  document.querySelectorAll('.track-select-checkbox').forEach(cb => {
+    const tid = cb.getAttribute('data-track-id');
+    cb.checked = state.selectedTrackIds.has(tid);
+  });
+}
+
+function openAddToPlaylistModal(specificTrackId = null) {
+  const tids = specificTrackId ? [specificTrackId] : Array.from(state.selectedTrackIds);
+  if (tids.length === 0) {
+    showToast('No tracks selected', 'error');
+    return;
+  }
+
+  elements.addToPlaylistSubtext.textContent = `Select which playlist to add ${tids.length} selected song(s) to:`;
+  elements.inputQuickNewPlaylistTitle.value = '';
+
+  const select = elements.selectTargetPlaylist;
+  select.innerHTML = '';
+  if (state.playlists.length === 0) {
+    select.innerHTML = '<option value="">-- No playlists yet (type below to create) --</option>';
+  } else {
+    state.playlists.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.title} (${p.track_count || (p.track_ids ? p.track_ids.length : 0)} songs)`;
+      select.appendChild(opt);
+    });
+  }
+
+  // Store active tids in state
+  state._pendingAddTrackIds = tids;
+  openModal(elements.addToPlaylistModal);
+}
+
+async function handleConfirmAddToPlaylist() {
+  const tids = state._pendingAddTrackIds || [];
+  if (tids.length === 0) return;
+
+  const quickTitle = elements.inputQuickNewPlaylistTitle.value.trim();
+  let targetPlaylistId = elements.selectTargetPlaylist.value;
+
+  try {
+    if (quickTitle) {
+      // Create new playlist with these tracks
+      const res = await fetch(`${API_BASE}/playlists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: quickTitle, track_ids: tids })
+      });
+      if (!res.ok) throw new Error('Failed to create playlist');
+      const newP = await res.json();
+      targetPlaylistId = newP.id;
+      showToast(`Created playlist "${quickTitle}" with ${tids.length} songs!`, 'success');
+    } else if (targetPlaylistId) {
+      // Add to existing
+      const res = await fetch(`${API_BASE}/playlists/${targetPlaylistId}/tracks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ track_ids: tids })
+      });
+      if (!res.ok) throw new Error('Failed to add tracks');
+      showToast(`Added ${tids.length} songs to playlist!`, 'success');
+    } else {
+      showToast('Please select a playlist or enter a new name', 'error');
+      return;
+    }
+
+    deselectAllTracks();
+    closeModal(elements.addToPlaylistModal);
+    await loadPlaylists();
+    await loadStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function quickCreatePlaylistFromCurrentFilter() {
+  if (!state.tracks || state.tracks.length === 0) {
+    showToast('No tracks currently match your filter', 'error');
+    return;
+  }
+  const defaultTitle = state.filters.subGenre || state.filters.mainGenre || 'My Custom Playlist';
+  elements.inputNewPlaylistTitle.value = defaultTitle;
+  elements.inputNewPlaylistDesc.value = `Created from filtered tracks (${state.tracks.length} songs)`;
+  elements.selectNewPlaylistGenre.value = '';
+  
+  // Store filtered track IDs directly
+  state._pendingPrefillTrackIds = state.tracks.map(t => t.id);
+  openModal(elements.createPlaylistModal);
+}
+
+// -------------------------------------------------------------
+// Track Library Filtering & Rendering
+// -------------------------------------------------------------
+function applyFiltersAndRender() {
+  let filtered = [...state.allTracks];
+  const q = state.filters.search.trim().toLowerCase();
+  const mg = state.filters.mainGenre.trim().toLowerCase();
+  const sg = state.filters.subGenre.trim().toLowerCase();
+
+  if (q) {
     filtered = filtered.filter(t => 
-      (t.title && t.title.toLowerCase().includes(query)) ||
-      (t.artist && t.artist.toLowerCase().includes(query)) ||
-      (t.sub_genre && t.sub_genre.toLowerCase().includes(query)) ||
-      (t.main_genre && t.main_genre.toLowerCase().includes(query)) ||
-      (t.vibe && t.vibe.toLowerCase().includes(query))
+      t.title.toLowerCase().includes(q) ||
+      t.artist.toLowerCase().includes(q) ||
+      (t.album && t.album.toLowerCase().includes(q)) ||
+      (t.sub_genre && t.sub_genre.toLowerCase().includes(q)) ||
+      (t.main_genre && t.main_genre.toLowerCase().includes(q)) ||
+      (t.vibe && t.vibe.toLowerCase().includes(q))
     );
   }
 
-  if (state.filters.mainGenre) {
-    filtered = filtered.filter(t => t.main_genre === state.filters.mainGenre);
+  if (mg) {
+    filtered = filtered.filter(t => (t.main_genre || '').toLowerCase() === mg);
   }
 
-  if (state.filters.subGenre) {
-    filtered = filtered.filter(t => t.sub_genre === state.filters.subGenre);
+  if (sg) {
+    filtered = filtered.filter(t => (t.sub_genre || '').toLowerCase() === sg);
   }
 
   state.tracks = filtered;
   renderStudioContent();
 }
 
-// -------------------------------------------------------------
-// UI Rendering
-// -------------------------------------------------------------
 function renderStudioContent() {
   const container = elements.studioContent;
-  container.innerHTML = '';
-
   if (!state.tracks || state.tracks.length === 0) {
     container.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">🎵</div>
-        <h3>No tracks found</h3>
-        <p>Import songs using the box above or click <strong>✨ Load Demo Tracks</strong> to see SoundSort AI in action!</p>
+        <h3>No matching tracks found</h3>
+        <p>Try clearing your search or genre filters.</p>
       </div>
     `;
     return;
   }
 
   if (state.viewMode === 'grid') {
-    renderSubgenreGrid(container);
+    renderGroupedGridView(container);
   } else {
     renderTableView(container);
   }
 }
 
-function renderSubgenreGrid(container) {
-  // Group tracks by sub_genre
+function renderGroupedGridView(container) {
   const groups = {};
-  state.tracks.forEach(track => {
-    const sub = track.sub_genre || 'Uncategorized';
-    if (!groups[sub]) {
-      groups[sub] = {
-        subGenre: sub,
-        mainGenre: track.main_genre || 'General',
-        tracks: []
-      };
-    }
-    groups[sub].tracks.push(track);
+  state.tracks.forEach(t => {
+    const gName = t.sub_genre || 'General';
+    if (!groups[gName]) groups[gName] = [];
+    groups[gName].push(t);
   });
 
-  const grid = document.createElement('div');
-  grid.className = 'subgenre-grid';
-
-  const sortedSubgenres = Object.keys(groups).sort((a, b) => {
-    if (a === 'Uncategorized') return 1;
-    if (b === 'Uncategorized') return -1;
+  const sortedGenreNames = Object.keys(groups).sort((a, b) => {
+    if (a === 'General') return 1;
+    if (b === 'General') return -1;
     return a.localeCompare(b);
   });
 
-  sortedSubgenres.forEach(subName => {
-    const group = groups[subName];
-    const card = document.createElement('div');
-    card.className = 'subgenre-card';
+  container.innerHTML = '';
+  const gridContainer = document.createElement('div');
+  gridContainer.className = 'subgenre-cards-grid';
 
-    const header = document.createElement('div');
-    header.className = 'subgenre-card-header';
-    header.innerHTML = `
-      <div class="subgenre-name-group">
-        <span class="genre-dot"></span>
-        <div>
-          <span class="subgenre-title">${escapeHtml(group.subGenre)}</span>
-          <span class="main-genre-pill">${escapeHtml(group.mainGenre)}</span>
+  sortedGenreNames.forEach(genreName => {
+    const list = groups[genreName];
+    const groupCard = document.createElement('div');
+    groupCard.className = 'subgenre-group-card';
+
+    groupCard.innerHTML = `
+      <div class="group-card-header">
+        <div class="group-title-left">
+          <h3 class="group-name">${escapeHtml(genreName)}</h3>
+          <span class="badge badge-subgenre">${list.length} tracks</span>
+        </div>
+        <div class="group-actions">
+          <button class="btn btn-secondary btn-xs" onclick="quickCreatePlaylistForGenre('${escapeHtml(genreName)}')">
+            ➕ Create Playlist
+          </button>
         </div>
       </div>
-      <span class="subgenre-count">${group.tracks.length} songs</span>
+      <div class="group-card-tracks">
+        ${list.map(t => `
+          <div class="track-row-compact">
+            <input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')">
+            <img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover">
+            <div class="track-info-mini">
+              <span class="track-title-mini" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
+              <span class="track-artist-mini" title="${escapeHtml(t.artist)}">${escapeHtml(t.artist)}</span>
+            </div>
+            <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')" title="Add to specific playlist">
+              + Playlist
+            </button>
+          </div>
+        `).join('')}
+      </div>
     `;
 
-    const body = document.createElement('div');
-    body.className = 'subgenre-card-body';
-
-    group.tracks.forEach(track => {
-      const row = document.createElement('div');
-      row.className = 'track-row';
-
-      const thumbUrl = getSafeThumb(track.thumbnail);
-      const sourceBadge = getSourceBadgeHtml(track.source_platform);
-
-      const fullDesc = `🎵 ${track.title}\n👤 Artist: ${track.artist}${track.album ? '\n💿 Album: ' + track.album : ''}\n🏷️ Sub-genre: ${track.sub_genre || 'Uncategorized'} (${track.main_genre || 'General'})${track.vibe ? '\n✨ Vibe: ' + track.vibe : ''}\n🌐 Source: ${(track.source_platform || 'manual').toUpperCase()}`;
-      row.setAttribute('title', fullDesc);
-
-      row.innerHTML = `
-        <img class="track-thumb" src="${thumbUrl}" alt="Cover" loading="lazy">
-        <div class="track-info">
-          <div class="track-title">${escapeHtml(track.title)}</div>
-          <div class="track-artist">${escapeHtml(track.artist)}</div>
-        </div>
-        <div class="track-meta-pills">
-          ${track.vibe ? `<span class="vibe-tag" title="✨ Vibe: ${escapeHtml(track.vibe)}">${escapeHtml(track.vibe)}</span>` : ''}
-          ${sourceBadge}
-        </div>
-        <div class="track-actions">
-          <button class="action-btn-sm btn-edit" title="Change Sub-genre" data-id="${track.id}">✏️</button>
-          <button class="action-btn-sm btn-delete" title="Remove song" data-id="${track.id}">&times;</button>
-        </div>
-      `;
-
-      // Safe fallback on load error
-      const img = row.querySelector('.track-thumb');
-      if (img) {
-        img.onerror = () => { img.src = DEFAULT_THUMB_SVG; };
-      }
-
-      // Event listeners for actions
-      row.querySelector('.btn-edit').addEventListener('click', (e) => {
-        e.stopPropagation();
-        promptEditTrackGenre(track);
-      });
-      row.querySelector('.btn-delete').addEventListener('click', (e) => {
-        e.stopPropagation();
-        handleDeleteTrack(track.id);
-      });
-
-      body.appendChild(row);
-    });
-
-    card.appendChild(header);
-    card.appendChild(body);
-    grid.appendChild(card);
+    gridContainer.appendChild(groupCard);
   });
 
-  container.appendChild(grid);
+  container.appendChild(gridContainer);
 }
 
 function renderTableView(container) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'studio-table-container';
-
-  let html = `
-    <table class="studio-table">
-      <thead>
-        <tr>
-          <th style="width: 40px;">#</th>
-          <th>Track & Artist</th>
-          <th>Main Genre</th>
-          <th>Sub-genre</th>
-          <th>Vibe</th>
-          <th>Source</th>
-          <th style="text-align: right;">Action</th>
-        </tr>
-      </thead>
-      <tbody>
+  container.innerHTML = `
+    <div class="table-wrapper">
+      <table class="tracks-table">
+        <thead>
+          <tr>
+            <th width="40"><input type="checkbox" id="chkSelectAllTable" onchange="toggleSelectAllTable(this)"></th>
+            <th width="60">Cover</th>
+            <th>Title & Artist</th>
+            <th>Main Genre</th>
+            <th>Sub-genre</th>
+            <th>Vibe / Mood</th>
+            <th width="120">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.tracks.map(t => `
+            <tr>
+              <td><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
+              <td><img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover"></td>
+              <td>
+                <div class="table-track-title">${escapeHtml(t.title)}</div>
+                <div class="table-track-artist">${escapeHtml(t.artist)}</div>
+              </td>
+              <td><span class="badge badge-main-genre">${escapeHtml(t.main_genre || 'Other')}</span></td>
+              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || 'General')}</span></td>
+              <td><span class="vibe-tag">${escapeHtml(t.vibe || '-')}</span></td>
+              <td>
+                <button class="btn-quick-add-pl" onclick="openAddToPlaylistModal('${t.id}')">
+                  ➕ Playlist
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
   `;
-
-  state.tracks.forEach((track, i) => {
-    const thumbUrl = getSafeThumb(track.thumbnail);
-    const sourceBadge = getSourceBadgeHtml(track.source_platform);
-    const fullDesc = `🎵 ${track.title}\n👤 Artist: ${track.artist}${track.album ? '\n💿 Album: ' + track.album : ''}\n🏷️ Sub-genre: ${track.sub_genre || 'Uncategorized'}`;
-
-    html += `
-      <tr data-id="${track.id}" title="${escapeHtml(fullDesc)}">
-        <td>${i + 1}</td>
-        <td>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="${thumbUrl}" class="table-track-thumb" style="width: 32px; height: 32px; border-radius: 4px; object-fit: cover;" loading="lazy">
-            <div>
-              <div style="font-weight: 600; font-size: 0.92rem; color: #ffffff;">${escapeHtml(track.title)}</div>
-              <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(track.artist)}</div>
-            </div>
-          </div>
-        </td>
-        <td><span class="main-genre-pill">${escapeHtml(track.main_genre || 'Uncategorized')}</span></td>
-        <td>
-          <input type="text" class="inline-genre-edit" value="${escapeHtml(track.sub_genre || '')}" data-id="${track.id}" data-field="sub_genre">
-        </td>
-        <td><span class="vibe-tag" title="✨ Vibe: ${escapeHtml(track.vibe || '')}">${escapeHtml(track.vibe || '-')}</span></td>
-        <td>${sourceBadge}</td>
-        <td style="text-align: right;">
-          <button class="action-btn-sm btn-delete" title="Delete" data-id="${track.id}">&times;</button>
-        </td>
-      </tr>
-    `;
-  });
-
-  html += `</tbody></table>`;
-  wrapper.innerHTML = html;
-
-  wrapper.querySelectorAll('.table-track-thumb').forEach(img => {
-    img.onerror = () => { img.src = DEFAULT_THUMB_SVG; };
-  });
-
-  // Listeners for inline inputs
-  wrapper.querySelectorAll('.inline-genre-edit').forEach(input => {
-    input.addEventListener('change', async (e) => {
-      const trackId = e.target.getAttribute('data-id');
-      const newSub = e.target.value.trim();
-      if (newSub) {
-        await updateTrackField(trackId, { sub_genre: newSub });
-      }
-    });
-  });
-
-  wrapper.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const trackId = e.target.getAttribute('data-id');
-      handleDeleteTrack(trackId);
-    });
-  });
-
-  container.appendChild(wrapper);
 }
 
-function getSourceBadgeHtml(platform) {
-  if (platform === 'spotify') return '<span class="badge badge-spotify">Spotify</span>';
-  if (platform === 'soundcloud') return '<span class="badge badge-soundcloud">SoundCloud</span>';
-  if (platform === 'youtube') return '<span class="badge badge-yt">YT</span>';
-  return '<span class="badge badge-text">Manual</span>';
-}
-
-function updateChip(chipEl, isOnline, onlineText, offlineText) {
-  const dot = chipEl.querySelector('.status-dot');
-  const label = chipEl.querySelector('.chip-label');
-  if (isOnline) {
-    dot.className = 'status-dot dot-online';
-    label.textContent = onlineText;
+function toggleSelectAllTable(cb) {
+  if (cb.checked) {
+    selectAllFilteredTracks();
   } else {
-    dot.className = 'status-dot dot-offline';
-    label.textContent = offlineText;
+    deselectAllTracks();
   }
 }
 
-function updateYTAuthBadge(isConnected) {
-  if (isConnected) {
-    elements.ytAuthIndicator.innerHTML = '<span class="auth-status-badge badge-connected">✓ Connected to YouTube Music</span>';
-  } else {
-    elements.ytAuthIndicator.innerHTML = '<span class="auth-status-badge badge-disconnected">&times; Not Connected</span>';
-  }
+function quickCreatePlaylistForGenre(genreName) {
+  const matchingIds = state.allTracks
+    .filter(t => (t.assigned_playlist || '').toLowerCase() === genreName.toLowerCase() || (t.sub_genre || '').toLowerCase() === genreName.toLowerCase() || (t.main_genre || '').toLowerCase() === genreName.toLowerCase())
+    .map(t => t.id);
+
+  elements.inputNewPlaylistTitle.value = genreName;
+  elements.inputNewPlaylistDesc.value = `Curated ${genreName} collection (${matchingIds.length} songs)`;
+  elements.selectNewPlaylistGenre.value = genreName;
+  openModal(elements.createPlaylistModal);
 }
 
 // -------------------------------------------------------------
-// Actions & Handlers
+// Importers & AI Classification
 // -------------------------------------------------------------
-async function handleImport() {
+async function handleImportText() {
   const text = elements.importInput.value.trim();
   if (!text) {
-    showToast('Please paste track links, CSV data, or upload a file.', 'info');
+    showToast('Please paste track names or links first', 'error');
     return;
   }
 
-  elements.importSpinner.classList.remove('hidden');
   elements.btnImport.disabled = true;
+  elements.importSpinner.classList.remove('hidden');
 
   try {
     const res = await fetch(`${API_BASE}/tracks/import`, {
@@ -536,120 +995,94 @@ async function handleImport() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input_text: text })
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Import failed');
 
-    showToast(`Successfully extracted ${data.newly_added} new tracks!`, 'success');
     elements.importInput.value = '';
+    showToast(`Successfully extracted ${data.total_extracted} tracks (${data.newly_added} newly added)!`, 'success');
     await refreshAll();
   } catch (err) {
-    showToast(err.message || 'Import error', 'error');
+    showToast(err.message, 'error');
   } finally {
-    elements.importSpinner.classList.add('hidden');
     elements.btnImport.disabled = false;
+    elements.importSpinner.classList.add('hidden');
   }
 }
 
 async function handleFileUpload(file) {
   if (!file) return;
-
   const formData = new FormData();
   formData.append('file', file);
 
-  elements.importSpinner.classList.remove('hidden');
   elements.btnImport.disabled = true;
+  elements.importSpinner.classList.remove('hidden');
 
   try {
     const res = await fetch(`${API_BASE}/tracks/import/file`, {
       method: 'POST',
       body: formData
     });
-
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'File import failed');
 
-    showToast(`🎉 Imported ${data.newly_added} tracks from ${file.name}!`, 'success');
-    elements.importInput.value = '';
+    showToast(`Uploaded ${file.name}: ${data.newly_added} songs imported!`, 'success');
     await refreshAll();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    elements.importSpinner.classList.add('hidden');
     elements.btnImport.disabled = false;
-    elements.fileUploadInput.value = '';
+    elements.importSpinner.classList.add('hidden');
   }
 }
 
 async function handleImportYtLikes() {
-  if (!state.systemStatus?.ytmusic_connected) {
-    openModal('settingsModal');
-    showToast('Please connect your YouTube Music account in Settings first.', 'info');
+  if (!state.settings?.ytmusic_connected) {
+    showToast('Please connect your YouTube Music account in Settings first', 'error');
+    openModal(elements.settingsModal);
     return;
   }
 
-  elements.btnImportYtLikes.disabled = true;
-  elements.btnImportYtLikes.textContent = '⏳ Loading all Liked Songs...';
-
+  showToast('Fetching Liked Songs from YouTube Music...', 'info');
   try {
     const res = await fetch(`${API_BASE}/tracks/import/yt-likes`, { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed to fetch Liked Songs');
+    if (!res.ok) throw new Error(data.detail || 'Failed fetching likes');
 
-    showToast(`🎉 Imported ${data.newly_added} liked songs from YouTube Music!`, 'success');
+    showToast(`Imported ${data.total_extracted} liked songs (${data.newly_added} new)!`, 'success');
     await refreshAll();
   } catch (err) {
     showToast(err.message, 'error');
-  } finally {
-    elements.btnImportYtLikes.disabled = false;
-    elements.btnImportYtLikes.textContent = '❤️ YT Music Likes';
   }
 }
 
-async function handleClassify() {
-  if (state.tracks.length === 0) {
-    showToast('No tracks to classify! Import some tracks first.', 'info');
+async function handleClassifyTracks() {
+  if (!state.settings?.has_gemini_key) {
+    showToast('Please configure your Gemini API Key in Settings first', 'error');
+    openModal(elements.settingsModal);
     return;
   }
 
-  const onlyUncategorized = elements.chkOnlyUncategorized ? elements.chkOnlyUncategorized.checked : true;
-  const unclassifiedCount = state.tracks.filter(t => !t.sub_genre || t.sub_genre === 'General' || t.main_genre === 'Uncategorized').length;
-
-  if (onlyUncategorized && unclassifiedCount === 0) {
-    showToast('🎉 Semua lagu sudah selesai diklasifikasikan! Hilangkan centang jika ingin re-classify seluruhnya.', 'info');
-    return;
-  }
-
-  const targetCount = onlyUncategorized ? unclassifiedCount : state.tracks.length;
-
-  // Show UI live progress wrapper
-  elements.aiProgressWrapper.classList.remove('hidden');
-  elements.aiProgressBarFill.style.width = '0%';
-  elements.aiProgressPercent.textContent = '0%';
-  elements.aiProgressLabel.textContent = `✨ Memulai klasifikasi ${targetCount} lagu...`;
-  elements.aiProgressSubtext.textContent = `0 / ${targetCount} tracks analyzed`;
-
-  elements.classifySpinner.classList.remove('hidden');
+  const onlyUncategorized = elements.chkOnlyUncategorized.checked;
   elements.btnClassify.disabled = true;
-  elements.btnClassifyText.textContent = 'Classifying in progress...';
+  elements.classifySpinner.classList.remove('hidden');
+  elements.aiProgressWrapper.classList.remove('hidden');
+  elements.aiProgressPercent.textContent = '0%';
+  elements.aiProgressBarFill.style.width = '0%';
+  elements.aiProgressLabel.textContent = '✨ Connecting to Gemini AI...';
 
   try {
-    const response = await fetch(`${API_BASE}/tracks/classify/stream`, {
+    const res = await fetch(`${API_BASE}/tracks/classify/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ only_uncategorized: onlyUncategorized })
     });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      if (errData.detail?.includes('API Key is missing') || response.status === 400) {
-        openModal('settingsModal');
-        throw new Error('Please enter your Gemini API Key in Settings first!');
-      }
-      throw new Error(errData.detail || 'Classification failed');
+    if (!res.ok) {
+      const errJson = await res.json();
+      throw new Error(errJson.detail || 'Classification failed');
     }
 
-    const reader = response.body.getReader();
+    const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
 
@@ -659,287 +1092,52 @@ async function handleClassify() {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n\n');
-      buffer = lines.pop(); // keep partial chunk
+      buffer = lines.pop();
 
       for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const jsonStr = line.replace(/^data:\s*/, '').trim();
-        if (!jsonStr) continue;
-
-        try {
-          const event = JSON.parse(jsonStr);
-
-          if (event.type === 'start') {
-            elements.aiProgressLabel.textContent = `Processing in micro-batches of ${event.batch_size}...`;
-            elements.aiProgressSubtext.textContent = `0 / ${event.total} tracks`;
-          } else if (event.type === 'progress') {
-            elements.aiProgressBarFill.style.width = `${event.percent}%`;
-            elements.aiProgressPercent.textContent = `${event.percent}%`;
-            elements.aiProgressLabel.textContent = `✨ Analyzing with ${event.model_used || 'Gemini'}...`;
-            elements.aiProgressSubtext.textContent = `${event.processed} / ${event.total} tracks categorized (${event.percent}%)`;
-
-            // Live update tracks & counters in memory
-            if (event.batch_tracks && event.batch_tracks.length > 0) {
-              const updatedMap = new Map(event.batch_tracks.map(t => [t.id, t]));
-              state.allTracks = state.allTracks.map(t => updatedMap.has(t.id) ? updatedMap.get(t.id) : t);
-              state.tracks = state.tracks.map(t => updatedMap.has(t.id) ? updatedMap.get(t.id) : t);
-              
-              state.allMainGenres = Array.from(new Set(state.allTracks.map(t => t.main_genre).filter(Boolean))).sort();
-              state.allSubgenres = Array.from(new Set(state.allTracks.map(t => t.sub_genre).filter(Boolean))).sort();
-              updateGenreFilterDropdowns();
-
-              const classifiedCount = state.allTracks.filter(t => t.sub_genre && t.sub_genre !== 'General' && t.main_genre !== 'Uncategorized').length;
-              elements.statClassified.textContent = classifiedCount;
-              
-              const uniqueSubs = new Set(state.allTracks.map(t => t.sub_genre).filter(Boolean));
-              elements.statSubgenres.textContent = uniqueSubs.size;
-
-              // Dynamically re-render cards/table as batches arrive!
-              renderStudioContent();
+        if (line.startsWith('data: ')) {
+          try {
+            const event = JSON.parse(line.substring(6));
+            if (event.type === 'start') {
+              elements.aiProgressLabel.textContent = `Analyzing ${event.total} songs in batches...`;
+            } else if (event.type === 'progress') {
+              elements.aiProgressPercent.textContent = `${event.percent}%`;
+              elements.aiProgressBarFill.style.width = `${event.percent}%`;
+              elements.aiProgressSubtext.textContent = `${event.processed} / ${event.total} tracks analyzed [${event.model_used}]`;
+            } else if (event.type === 'complete') {
+              elements.aiProgressLabel.textContent = '✨ Classification Complete!';
+              elements.aiProgressBarFill.style.width = '100%';
+              elements.aiProgressPercent.textContent = '100%';
+              showToast('Classification completed successfully!', 'success');
+            } else if (event.type === 'error') {
+              showToast(`Error: ${event.message}`, 'error');
             }
-          } else if (event.type === 'error') {
-            throw new Error(event.message || 'Error occurred during classification');
-          } else if (event.type === 'complete') {
-            elements.aiProgressBarFill.style.width = '100%';
-            elements.aiProgressPercent.textContent = '100%';
-            elements.aiProgressLabel.textContent = '✓ AI Classification Complete!';
-            showToast(`🎉 Successfully classified ${event.total_classified} songs!`, 'success');
+          } catch (e) {
+            console.error('SSE JSON parse error:', e);
           }
-        } catch (e) {
-          console.warn('Event parse error:', e);
         }
       }
     }
 
     await refreshAll();
   } catch (err) {
-    elements.aiProgressLabel.textContent = `❌ ${err.message}`;
     showToast(err.message, 'error');
   } finally {
-    elements.classifySpinner.classList.add('hidden');
     elements.btnClassify.disabled = false;
-    elements.btnClassifyText.textContent = '✨ Run AI Sub-genre Classifier';
+    elements.classifySpinner.classList.add('hidden');
     setTimeout(() => {
       elements.aiProgressWrapper.classList.add('hidden');
-    }, 5000);
-  }
-}
-
-async function promptEditTrackGenre(track) {
-  const newSub = prompt(`Change sub-genre for "${track.title}" by ${track.artist}:`, track.sub_genre || '');
-  if (newSub !== null && newSub.trim() && newSub.trim() !== track.sub_genre) {
-    await updateTrackField(track.id, { sub_genre: newSub.trim() });
-  }
-}
-
-async function updateTrackField(trackId, updates) {
-  try {
-    const res = await fetch(`${API_BASE}/tracks/${trackId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
-    if (!res.ok) throw new Error('Update failed');
-    showToast('Updated sub-genre', 'success');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleDeleteTrack(trackId) {
-  try {
-    const res = await fetch(`${API_BASE}/tracks/${trackId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Delete failed');
-    showToast('Track removed', 'info');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-async function handleClearAll() {
-  if (state.tracks.length === 0) return;
-  if (!confirm('Are you sure you want to clear all tracks from the library?')) return;
-
-  try {
-    const res = await fetch(`${API_BASE}/tracks`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Clear failed');
-    showToast('All tracks cleared', 'info');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
+    }, 4000);
   }
 }
 
 // -------------------------------------------------------------
-// Merge Subgenres
-// -------------------------------------------------------------
-function openMergeModal() {
-  const subgenres = (state.systemStatus?.subgenres || []).filter(Boolean);
-  if (subgenres.length === 0) {
-    showToast('No sub-genres to merge yet.', 'info');
-    return;
-  }
-
-  elements.selectMergeSource.innerHTML = '';
-  elements.existingSubgenresList.innerHTML = '';
-
-  subgenres.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    elements.selectMergeSource.appendChild(opt);
-
-    const dataOpt = document.createElement('option');
-    dataOpt.value = s;
-    elements.existingSubgenresList.appendChild(dataOpt);
-  });
-
-  elements.inputMergeTarget.value = '';
-  openModal('mergeModal');
-}
-
-async function handleConfirmMerge() {
-  const source = elements.selectMergeSource.value;
-  const target = elements.inputMergeTarget.value.trim();
-
-  if (!source || !target) {
-    showToast('Please specify both source and target sub-genres.', 'info');
-    return;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/genres/merge`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        old_subgenre: source,
-        new_subgenre: target
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Merge failed');
-
-    showToast(data.message || 'Merged sub-genres successfully!', 'success');
-    closeModal('mergeModal');
-    await refreshAll();
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-}
-
-// -------------------------------------------------------------
-// YouTube Music Sync
-// -------------------------------------------------------------
-function openSyncModal() {
-  if (state.tracks.length === 0) {
-    showToast('No tracks in library to sync!', 'info');
-    return;
-  }
-
-  const subgenres = (state.systemStatus?.subgenres || []).filter(Boolean);
-  const container = elements.syncSubgenresList;
-  container.innerHTML = '';
-
-  // Count tracks per subgenre
-  const counts = {};
-  state.tracks.forEach(t => {
-    const s = t.sub_genre || 'General';
-    counts[s] = (counts[s] || 0) + 1;
-  });
-
-  subgenres.forEach(subName => {
-    const count = counts[subName] || 0;
-    const item = document.createElement('label');
-    item.className = 'sync-subgenre-item';
-    item.innerHTML = `
-      <input type="checkbox" value="${escapeHtml(subName)}" checked>
-      <span class="sync-item-label">${escapeHtml(subName)}</span>
-      <span class="sync-item-badge">${count} songs</span>
-    `;
-    container.appendChild(item);
-  });
-
-  elements.syncProgressBox.classList.add('hidden');
-  elements.syncResultsLog.innerHTML = '';
-  elements.syncProgressBar.style.width = '0%';
-  openModal('syncModal');
-}
-
-async function handleStartSync() {
-  const checkedInputs = elements.syncSubgenresList.querySelectorAll('input[type="checkbox"]:checked');
-  const selectedSubgenres = Array.from(checkedInputs).map(cb => cb.value);
-
-  if (selectedSubgenres.length === 0) {
-    showToast('Please select at least one sub-genre to export.', 'info');
-    return;
-  }
-
-  // Check YT Music auth
-  if (!state.systemStatus?.ytmusic_connected) {
-    closeModal('syncModal');
-    openModal('settingsModal');
-    showToast('Please connect your YouTube Music account in Settings first.', 'info');
-    return;
-  }
-
-  elements.syncSpinner.classList.remove('hidden');
-  elements.btnStartSync.disabled = true;
-  elements.syncProgressBox.classList.remove('hidden');
-  elements.syncStatusMsg.textContent = `Creating ${selectedSubgenres.length} playlists on YouTube Music...`;
-  elements.syncProgressBar.style.width = '20%';
-
-  try {
-    const res = await fetch(`${API_BASE}/ytmusic/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subgenres: selectedSubgenres,
-        playlist_prefix: elements.inputPlaylistPrefix.value || 'SoundSort: '
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Sync failed');
-
-    elements.syncProgressBar.style.width = '100%';
-    elements.syncStatusMsg.textContent = `✓ Successfully exported ${data.playlists.length} playlists!`;
-
-    // Render results log
-    let logHtml = '';
-    data.playlists.forEach(pl => {
-      if (pl.success !== false) {
-        logHtml += `
-          <div class="sync-log-success">
-            ✓ <strong>${escapeHtml(pl.playlist_title)}</strong>: ${pl.added_count}/${pl.total_requested} tracks &bull;
-            <a href="${pl.playlist_url}" target="_blank" rel="noopener">Open in YouTube Music &rarr;</a>
-          </div>
-        `;
-      } else {
-        logHtml += `<div style="color: #ef4444;">&times; Failed for ${escapeHtml(pl.subgenre)}: ${pl.error}</div>`;
-      }
-    });
-
-    elements.syncResultsLog.innerHTML = logHtml;
-    showToast('Playlists created in YouTube Music!', 'success');
-    await refreshAll();
-  } catch (err) {
-    elements.syncStatusMsg.textContent = `Sync Error: ${err.message}`;
-    showToast(err.message, 'error');
-  } finally {
-    elements.syncSpinner.classList.add('hidden');
-    elements.btnStartSync.disabled = false;
-  }
-}
-
-// -------------------------------------------------------------
-// Settings & Connect YT
+// Settings & Auth Modal
 // -------------------------------------------------------------
 async function handleSaveSettings() {
   const geminiKey = elements.inputGeminiKey.value.trim();
-  const model = elements.selectGeminiModel.value;
-  const prefix = elements.inputPlaylistPrefix.value;
+  const geminiModel = elements.selectGeminiModel.value;
+  const prefix = elements.inputPlaylistPrefix.value.trim();
 
   try {
     const res = await fetch(`${API_BASE}/settings`, {
@@ -947,13 +1145,14 @@ async function handleSaveSettings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         gemini_api_key: geminiKey || undefined,
-        gemini_model: model,
+        gemini_model: geminiModel,
         playlist_prefix: prefix
       })
     });
     if (!res.ok) throw new Error('Failed to save settings');
+
+    closeModal(elements.settingsModal);
     showToast('Settings saved successfully!', 'success');
-    closeModal('settingsModal');
     await loadSettings();
     await loadStatus();
   } catch (err) {
@@ -962,9 +1161,9 @@ async function handleSaveSettings() {
 }
 
 async function handleConnectYT() {
-  const raw = elements.inputYtHeaders.value.trim();
-  if (!raw) {
-    showToast('Please paste the YouTube Music browser request headers.', 'info');
+  const rawHeaders = elements.inputYtHeaders.value.trim();
+  if (!rawHeaders) {
+    showToast('Please paste your YouTube Music browser request headers or cookie', 'error');
     return;
   }
 
@@ -975,12 +1174,12 @@ async function handleConnectYT() {
     const res = await fetch(`${API_BASE}/ytmusic/setup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ headers_raw: raw })
+      body: JSON.stringify({ headers_raw: rawHeaders })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Connection failed');
 
-    showToast('YouTube Music connected successfully!', 'success');
+    showToast('Successfully connected to YouTube Music!', 'success');
     elements.inputYtHeaders.value = '';
     await loadSettings();
     await loadStatus();
@@ -993,225 +1192,32 @@ async function handleConnectYT() {
 }
 
 // -------------------------------------------------------------
-// Custom Playlist Builder by Genre & Vibe
-// -------------------------------------------------------------
-let currentCustomMatchedTracks = [];
-
-function openCustomPlaylistModal() {
-  if (state.allTracks.length === 0) {
-    showToast('Import songs first to build a custom playlist.', 'info');
-    return;
-  }
-
-  // Populate main genre dropdown
-  const mainSelect = elements.selectCustomMainGenre;
-  mainSelect.innerHTML = '<option value="">All Main Genres</option>';
-  state.allMainGenres.forEach(g => {
-    const opt = document.createElement('option');
-    opt.value = g;
-    opt.textContent = g;
-    mainSelect.appendChild(opt);
-  });
-
-  updateCustomSubgenreDropdown();
-
-  elements.inputCustomPlaylistTitle.value = '';
-  elements.inputCustomVibeQuery.value = '';
-  
-  updateCustomPlaylistPreview();
-  openModal('customPlaylistModal');
-}
-
-function updateCustomSubgenreDropdown() {
-  const selectedMain = elements.selectCustomMainGenre.value;
-  const subSelect = elements.selectCustomSubGenre;
-  
-  let availableSubs = state.allTracks;
-  if (selectedMain) {
-    availableSubs = availableSubs.filter(t => t.main_genre === selectedMain);
-  }
-  const uniqueSubs = Array.from(new Set(availableSubs.map(t => t.sub_genre).filter(Boolean))).sort();
-
-  subSelect.innerHTML = '<option value="">All Sub-genres</option>';
-  uniqueSubs.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
-    subSelect.appendChild(opt);
-  });
-}
-
-function updateCustomPlaylistPreview() {
-  const selectedMain = elements.selectCustomMainGenre.value;
-  const selectedSub = elements.selectCustomSubGenre.value;
-  const vibeQuery = (elements.inputCustomVibeQuery.value || '').toLowerCase().trim();
-
-  let matched = state.allTracks;
-
-  if (selectedMain) {
-    matched = matched.filter(t => t.main_genre === selectedMain);
-  }
-  if (selectedSub) {
-    matched = matched.filter(t => t.sub_genre === selectedSub);
-  }
-  if (vibeQuery) {
-    matched = matched.filter(t => 
-      (t.vibe && t.vibe.toLowerCase().includes(vibeQuery)) ||
-      (t.sub_genre && t.sub_genre.toLowerCase().includes(vibeQuery)) ||
-      (t.title && t.title.toLowerCase().includes(vibeQuery)) ||
-      (t.artist && t.artist.toLowerCase().includes(vibeQuery))
-    );
-  }
-
-  currentCustomMatchedTracks = matched;
-  elements.customMatchedCount.textContent = matched.length;
-
-  if (matched.length === 0) {
-    elements.customMatchedList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.82rem; text-align: center; padding: 12px;">No songs match the current genre/vibe filters.</div>';
-    return;
-  }
-
-  elements.customMatchedList.innerHTML = matched.slice(0, 100).map((t, idx) => `
-    <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 0.8rem;">
-      <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 65%;">
-        <strong>${idx + 1}. ${escapeHtml(t.title)}</strong> <span style="color: var(--text-muted); font-size: 0.75rem;">- ${escapeHtml(t.artist)}</span>
-      </div>
-      <div style="display: flex; gap: 5px; flex-shrink: 0;">
-        <span class="vibe-tag" style="font-size: 0.6rem; max-width: 90px;">${escapeHtml(t.sub_genre || t.main_genre || 'Music')}</span>
-        ${t.vibe ? `<span class="vibe-tag" style="font-size: 0.6rem; color: #a855f7; border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.1); max-width: 90px;">${escapeHtml(t.vibe)}</span>` : ''}
-      </div>
-    </div>
-  `).join('');
-
-  if (matched.length > 100) {
-    elements.customMatchedList.innerHTML += `<div style="text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 6px;">...and ${matched.length - 100} more songs</div>`;
-  }
-}
-
-async function handleCreateCustomPlaylist() {
-  if (!state.systemStatus?.ytmusic_connected) {
-    openModal('settingsModal');
-    showToast('Please connect your YouTube Music account in Settings first.', 'info');
-    return;
-  }
-
-  const title = elements.inputCustomPlaylistTitle.value.trim();
-  if (!title) {
-    showToast('Please enter a title for your new playlist.', 'error');
-    elements.inputCustomPlaylistTitle.focus();
-    return;
-  }
-
-  if (currentCustomMatchedTracks.length === 0) {
-    showToast('No matching songs to add. Please adjust your filters.', 'error');
-    return;
-  }
-
-  elements.customPlaylistSpinner.classList.remove('hidden');
-  elements.btnCreateCustomPlaylist.disabled = true;
-
-  try {
-    const res = await fetch(`${API_BASE}/ytmusic/custom-playlist`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: title,
-        description: `Custom mix curated with SoundSort AI (${currentCustomMatchedTracks.length} tracks)`,
-        track_ids: currentCustomMatchedTracks.map(t => t.id)
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || 'Failed to create custom playlist');
-
-    showToast(`🎉 Playlist "${title}" created with ${data.added_count} songs!`, 'success');
-    closeModal('customPlaylistModal');
-    
-    if (data.playlist_url) {
-      window.open(data.playlist_url, '_blank');
-    }
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    elements.customPlaylistSpinner.classList.add('hidden');
-    elements.btnCreateCustomPlaylist.disabled = false;
-  }
-}
-
-// -------------------------------------------------------------
-// Modal & Utility Helpers
-// -------------------------------------------------------------
-function openModal(modalId) {
-  document.getElementById(modalId)?.classList.remove('hidden');
-}
-
-function closeModal(modalId) {
-  document.getElementById(modalId)?.classList.add('hidden');
-}
-
-function showToast(message, type = 'info') {
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
-  elements.toastContainer.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    setTimeout(() => toast.remove(), 250);
-  }, 3500);
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-// -------------------------------------------------------------
 // Event Listeners Setup
 // -------------------------------------------------------------
 function setupEventListeners() {
+  // Navigation Tabs
+  elements.navTabLibrary.addEventListener('click', () => switchTab('library'));
+  elements.navTabPlaylists.addEventListener('click', () => switchTab('playlists'));
+
   // Importer
-  elements.btnImport.addEventListener('click', handleImport);
-  elements.btnImportYtLikes.addEventListener('click', handleImportYtLikes);
+  elements.btnImport.addEventListener('click', handleImportText);
   elements.btnUploadCsv.addEventListener('click', () => elements.fileUploadInput.click());
   elements.fileUploadInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) handleFileUpload(file);
+    if (e.target.files.length > 0) handleFileUpload(e.target.files[0]);
   });
-
-  // Drag and Drop support on textarea
-  const dropTarget = elements.importInput;
-  dropTarget.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropTarget.style.borderColor = 'var(--accent-cyan)';
-    dropTarget.style.background = 'rgba(0, 242, 254, 0.05)';
-  });
-  dropTarget.addEventListener('dragleave', (e) => {
-    dropTarget.style.borderColor = '';
-    dropTarget.style.background = '';
-  });
-  dropTarget.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropTarget.style.borderColor = '';
-    dropTarget.style.background = '';
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileUpload(e.dataTransfer.files[0]);
-    }
-  });
-
   elements.btnLoadSample.addEventListener('click', () => {
     elements.importInput.value = DEMO_TRACKS_INPUT;
-    showToast('Demo playlist links & track names loaded into input!', 'info');
   });
-  elements.btnClearTracks.addEventListener('click', handleClearAll);
+  elements.btnImportYtLikes.addEventListener('click', handleImportYtLikes);
+  elements.btnClearTracks.addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to clear all imported tracks?')) return;
+    await fetch(`${API_BASE}/tracks`, { method: 'DELETE' });
+    showToast('Library cleared', 'info');
+    await refreshAll();
+  });
 
-  // AI Classification
-  elements.btnClassify.addEventListener('click', handleClassify);
+  // AI Classifier
+  elements.btnClassify.addEventListener('click', handleClassifyTracks);
 
   // Filters & Search
   elements.filterSearch.addEventListener('input', (e) => {
@@ -1220,7 +1226,6 @@ function setupEventListeners() {
   });
   elements.filterMainGenre.addEventListener('change', (e) => {
     state.filters.mainGenre = e.target.value;
-    state.filters.subGenre = ''; // Reset subgenre when main genre changes
     updateGenreFilterDropdowns();
     applyFiltersAndRender();
   });
@@ -1229,7 +1234,7 @@ function setupEventListeners() {
     applyFiltersAndRender();
   });
 
-  // View Mode Toggles
+  // View Mode
   elements.btnViewGrid.addEventListener('click', () => {
     state.viewMode = 'grid';
     elements.btnViewGrid.classList.add('active');
@@ -1243,45 +1248,114 @@ function setupEventListeners() {
     renderStudioContent();
   });
 
-  // Modals Open/Close
-  elements.btnOpenSettings.addEventListener('click', () => openModal('settingsModal'));
-  elements.btnOpenMergeModal.addEventListener('click', openMergeModal);
-  elements.btnOpenSyncModal.addEventListener('click', openSyncModal);
-  elements.btnOpenCustomPlaylistModal.addEventListener('click', openCustomPlaylistModal);
+  // Playlists Studio Buttons
+  elements.btnOpenCreatePlaylistModal.addEventListener('click', openCreatePlaylistModal);
+  elements.btnConfirmCreatePlaylist.addEventListener('click', handleConfirmCreatePlaylist);
+  elements.btnAutoGeneratePlaylists.addEventListener('click', autoGeneratePlaylists);
+  elements.btnExportAllPlaylists.addEventListener('click', exportAllPlaylistsToYT);
+  elements.btnConfirmAddGenreToPlaylist.addEventListener('click', handleConfirmAddGenreToPlaylist);
+  elements.btnConfirmAddToPlaylist.addEventListener('click', handleConfirmAddToPlaylist);
+  elements.btnQuickCreatePlaylistFromFilter.addEventListener('click', quickCreatePlaylistFromCurrentFilter);
 
-  // Custom Playlist Filtering & Creation
-  elements.selectCustomMainGenre.addEventListener('change', () => {
-    updateCustomSubgenreDropdown();
-    updateCustomPlaylistPreview();
+  // Selection Bar Actions
+  elements.btnAddSelectedToPlaylist.addEventListener('click', () => openAddToPlaylistModal());
+  elements.btnDeselectAllTracks.addEventListener('click', deselectAllTracks);
+
+  // Inspector Search & Actions
+  elements.inspectorSearch.addEventListener('input', () => {
+    if (state.currentInspectingPlaylist) {
+      renderInspectorTracksList(state.currentInspectingPlaylist.tracks || []);
+    }
   });
-  elements.selectCustomSubGenre.addEventListener('change', updateCustomPlaylistPreview);
-  elements.inputCustomVibeQuery.addEventListener('input', updateCustomPlaylistPreview);
-  elements.btnCreateCustomPlaylist.addEventListener('click', handleCreateCustomPlaylist);
-
-  // Modal Close buttons
-  document.querySelectorAll('[data-close]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const modalId = btn.getAttribute('data-close');
-      closeModal(modalId);
-    });
+  elements.btnInspectorAddGenre.addEventListener('click', () => {
+    if (state.currentInspectingPlaylist) {
+      openAddGenreModal(state.currentInspectingPlaylist.id);
+    }
+  });
+  elements.btnInspectorExportYT.addEventListener('click', () => {
+    if (state.currentInspectingPlaylist) {
+      exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
+    }
   });
 
-  // Settings Save & Connect
+  // Settings
+  elements.btnOpenSettings.addEventListener('click', () => openModal(elements.settingsModal));
   elements.btnSaveSettings.addEventListener('click', handleSaveSettings);
   elements.btnConnectYT.addEventListener('click', handleConnectYT);
 
-  // Merge Subgenres
-  elements.btnConfirmMerge.addEventListener('click', handleConfirmMerge);
+  // Modal Closers
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const modalId = e.currentTarget.getAttribute('data-close');
+      const modal = document.getElementById(modalId);
+      if (modal) closeModal(modal);
+    });
+  });
 
-  // Sync Modal Checkbox helpers
-  elements.btnSelectAllSync.addEventListener('click', () => {
-    elements.syncSubgenresList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+  // Close modals on backdrop click
+  document.querySelectorAll('.modal-backdrop').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal(modal);
+    });
   });
-  elements.btnDeselectAllSync.addEventListener('click', () => {
-    elements.syncSubgenresList.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-  });
-  elements.btnStartSync.addEventListener('click', handleStartSync);
 }
 
-// Run on page load
+// -------------------------------------------------------------
+// UI Utilities (Modals, Toasts, Chips, Helpers)
+// -------------------------------------------------------------
+function openModal(modal) {
+  if (!modal) return;
+  modal.classList.remove('hidden');
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  modal.classList.add('hidden');
+}
+
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+  elements.toastContainer.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function updateChip(chipEl, isOnline, textOnline, textOffline) {
+  if (!chipEl) return;
+  const dot = chipEl.querySelector('.status-dot');
+  const label = chipEl.querySelector('.chip-label');
+  if (isOnline) {
+    dot.className = 'status-dot dot-online';
+    label.textContent = textOnline;
+  } else {
+    dot.className = 'status-dot dot-offline';
+    label.textContent = textOffline;
+  }
+}
+
+function updateYTAuthBadge(isConnected) {
+  const badge = elements.ytAuthIndicator;
+  if (!badge) return;
+  if (isConnected) {
+    badge.innerHTML = `<span class="auth-status-badge badge-connected">Connected &bull; Ready to Sync</span>`;
+  } else {
+    badge.innerHTML = `<span class="auth-status-badge badge-disconnected">Not Connected</span>`;
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', initApp);

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
 DB_FILE = os.path.join(DATA_DIR, "db.json")
+PLAYLISTS_FILE = os.path.join(DATA_DIR, "playlists.json")
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 YTMUSIC_AUTH_FILE = os.path.join(DATA_DIR, "ytmusic_auth.json")
 
@@ -30,6 +31,17 @@ class TrackItem(BaseModel):
     is_synced: bool = False
     assigned_playlist: Optional[str] = None
     created_at: float = Field(default_factory=time.time)
+
+class WebPlaylist(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    description: Optional[str] = ""
+    track_ids: List[str] = Field(default_factory=list)
+    yt_playlist_id: Optional[str] = None
+    yt_playlist_url: Optional[str] = None
+    is_synced: bool = False
+    created_at: float = Field(default_factory=time.time)
+    updated_at: float = Field(default_factory=time.time)
 
 class AppSettings(BaseModel):
     gemini_api_key: str = ""
@@ -57,6 +69,9 @@ def save_settings(settings: AppSettings) -> AppSettings:
         json.dump(settings.model_dump(), f, indent=2)
     return settings
 
+# -------------------------------------------------------------
+# Tracks Store
+# -------------------------------------------------------------
 def get_all_tracks() -> List[TrackItem]:
     if not os.path.exists(DB_FILE):
         return []
@@ -73,8 +88,6 @@ def save_all_tracks(tracks: List[TrackItem]):
 
 def add_tracks(new_tracks: List[TrackItem]) -> List[TrackItem]:
     current_tracks = get_all_tracks()
-    
-    # Avoid duplicate (same artist and title case-insensitive)
     existing_keys = {f"{t.artist.strip().lower()}-{t.title.strip().lower()}" for t in current_tracks}
     
     added = []
@@ -115,8 +128,96 @@ def delete_track(track_id: str) -> bool:
     tracks = [t for t in tracks if t.id != track_id]
     if len(tracks) < initial_len:
         save_all_tracks(tracks)
+        # Also clean up from playlists
+        pls = get_all_playlists()
+        for p in pls:
+            if track_id in p.track_ids:
+                p.track_ids.remove(track_id)
+        save_all_playlists(pls)
         return True
     return False
 
 def clear_all_tracks():
     save_all_tracks([])
+
+# -------------------------------------------------------------
+# Playlists Store
+# -------------------------------------------------------------
+def get_all_playlists() -> List[WebPlaylist]:
+    if not os.path.exists(PLAYLISTS_FILE):
+        return []
+    try:
+        with open(PLAYLISTS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return [WebPlaylist(**item) for item in data]
+    except Exception:
+        return []
+
+def save_all_playlists(playlists: List[WebPlaylist]):
+    with open(PLAYLISTS_FILE, "w", encoding="utf-8") as f:
+        json.dump([p.model_dump() for p in playlists], f, indent=2, ensure_ascii=False)
+
+def get_playlist_by_id(playlist_id: str) -> Optional[WebPlaylist]:
+    for p in get_all_playlists():
+        if p.id == playlist_id:
+            return p
+    return None
+
+def create_playlist(title: str, description: str = "", track_ids: Optional[List[str]] = None) -> WebPlaylist:
+    playlists = get_all_playlists()
+    new_p = WebPlaylist(
+        title=title.strip(),
+        description=description.strip(),
+        track_ids=list(dict.fromkeys(track_ids or []))
+    )
+    playlists.append(new_p)
+    save_all_playlists(playlists)
+    return new_p
+
+def update_playlist(playlist_id: str, updates: Dict[str, Any]) -> Optional[WebPlaylist]:
+    playlists = get_all_playlists()
+    for i, p in enumerate(playlists):
+        if p.id == playlist_id:
+            data = p.model_dump()
+            data.update(updates)
+            data["updated_at"] = time.time()
+            updated_p = WebPlaylist(**data)
+            playlists[i] = updated_p
+            save_all_playlists(playlists)
+            return updated_p
+    return None
+
+def delete_playlist(playlist_id: str) -> bool:
+    playlists = get_all_playlists()
+    initial_len = len(playlists)
+    playlists = [p for p in playlists if p.id != playlist_id]
+    if len(playlists) < initial_len:
+        save_all_playlists(playlists)
+        return True
+    return False
+
+def add_tracks_to_playlist(playlist_id: str, track_ids: List[str]) -> Optional[WebPlaylist]:
+    playlists = get_all_playlists()
+    for i, p in enumerate(playlists):
+        if p.id == playlist_id:
+            # Preserve existing order and append new without duplicates
+            existing = set(p.track_ids)
+            for tid in track_ids:
+                if tid not in existing:
+                    p.track_ids.append(tid)
+                    existing.add(tid)
+            p.updated_at = time.time()
+            save_all_playlists(playlists)
+            return p
+    return None
+
+def remove_track_from_playlist(playlist_id: str, track_id: str) -> Optional[WebPlaylist]:
+    playlists = get_all_playlists()
+    for i, p in enumerate(playlists):
+        if p.id == playlist_id:
+            if track_id in p.track_ids:
+                p.track_ids.remove(track_id)
+                p.updated_at = time.time()
+                save_all_playlists(playlists)
+            return p
+    return None

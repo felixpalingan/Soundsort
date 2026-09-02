@@ -3,210 +3,230 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundSort AI — Music Classifier, Web Playlist Studio & Local Tagger</title>
-  <meta name="description" content="Aggregate music tracks from Spotify, SoundCloud, YouTube, and Local Audio Files, classify them into granular sub-genres with AI, tag local ID3 metadata, and sync directly to YouTube Music.">
+  <title>SoundSort — Hi-Fi Vinylist Music Studio & Classifier</title>
+  <meta name="description" content="Analog-inspired music classifier, web playlist studio, local ID3 tagger, and YouTube Music sync.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..800;1,9..40,400..800&family=Outfit:wght@500;600;700;800;900&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="app-container">
+<body class="vinyl-theme">
+  
+  <div class="vinyl-stage">
     
-    <!-- Top Navigation Header -->
-    <header class="app-header">
-      <div class="brand">
-        <div class="logo-icon" aria-hidden="true">
-          <span class="pulse-bar bar-1"></span>
-          <span class="pulse-bar bar-2"></span>
-          <span class="pulse-bar bar-3"></span>
-          <span class="pulse-bar bar-4"></span>
-        </div>
-        <div class="brand-text">
-          <h1>SoundSort <span class="badge-ai">AI</span></h1>
-          <p class="subtitle">AI Classifier &bull; Web Playlist Studio &bull; Local ID3 Tagger &bull; YT Music Sync</p>
-        </div>
-      </div>
+    <!-- App Container Frame -->
+    <div class="vinyl-app-deck">
 
-      <!-- Main Navigation Tabs -->
-      <nav class="main-nav-tabs" aria-label="Main Navigation">
-        <button id="navTabLibrary" class="nav-tab-btn active" data-tab="library" aria-selected="true" role="tab">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
-          <span>Track Library</span>
-          <span class="tab-count-badge" id="tabCountLibrary">0</span>
-        </button>
-        <button id="navTabPlaylists" class="nav-tab-btn" data-tab="playlists" aria-selected="false" role="tab">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15V6"></path><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path><path d="M12 12H3"></path><path d="M16 6H3"></path><path d="M12 18H3"></path></svg>
-          <span>My Web Playlists</span>
-          <span class="tab-count-badge badge-glow" id="tabCountPlaylists">0</span>
-        </button>
-        <button id="navTabLocal" class="nav-tab-btn" data-tab="local" aria-selected="false" role="tab">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-          <span>Local Files & Downloads</span>
-          <span class="tab-count-badge" id="tabCountLocal">0</span>
-        </button>
-      </nav>
-
-      <!-- Quick Status Indicators -->
-      <div class="header-status-bar">
-        <div class="status-chip" id="geminiStatusChip" title="Gemini AI Status">
-          <span class="status-dot dot-offline"></span>
-          <span class="chip-label">Gemini AI</span>
+      <!-- ========================================================= -->
+      <!-- TOP DECK BAR -->
+      <!-- ========================================================= -->
+      <header class="deck-topbar">
+        <div class="deck-brand">
+          <div class="brand-vinyl-badge">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 2a10 10 0 0 0 0 20"></path>
+            </svg>
+          </div>
+          <div class="brand-text-deck">
+            <span class="brand-logo-text">vinylist<span class="dot-red">.</span></span>
+            <span class="brand-subtag">SoundSort AI Edition</span>
+          </div>
         </div>
-        <div class="status-chip" id="ytStatusChip" title="YouTube Music Status">
-          <span class="status-dot dot-offline"></span>
-          <span class="chip-label">YT Music</span>
-        </div>
-        <button id="btnOpenSettings" class="btn btn-secondary btn-icon" title="Settings & Auth" aria-label="Open settings and authentication modal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span>Settings</span>
-        </button>
-      </div>
-    </header>
 
-    <!-- Main Workspace Grid -->
-    <main class="main-layout">
-      
-      <!-- ============================================================= -->
-      <!-- TAB 1: TRACK LIBRARY VIEW -->
-      <!-- ============================================================= -->
-      <div id="sectionLibrary" class="tab-content active">
+        <!-- Center Deck Navigation -->
+        <nav class="deck-nav" aria-label="Deck Navigation">
+          <button id="navTabLibrary" class="deck-nav-btn active" data-tab="library" aria-selected="true" role="tab">
+            <span>Track Library</span>
+            <span class="deck-nav-count" id="tabCountLibrary">0</span>
+          </button>
+          <button id="navTabPlaylists" class="deck-nav-btn" data-tab="playlists" aria-selected="false" role="tab">
+            <span>Playlists Studio</span>
+            <span class="deck-nav-count red-badge" id="tabCountPlaylists">0</span>
+          </button>
+          <button id="navTabLocal" class="deck-nav-btn" data-tab="local" aria-selected="false" role="tab">
+            <span>Local & Downloads</span>
+            <span class="deck-nav-count" id="tabCountLocal">0</span>
+          </button>
+        </nav>
+
+        <!-- Deck Top Actions -->
+        <div class="deck-top-actions">
+          <div class="status-indicator-pill" id="geminiStatusChip" title="Gemini AI Engine">
+            <span class="status-led led-green"></span>
+            <span>Gemini AI</span>
+          </div>
+          <div class="status-indicator-pill" id="ytStatusChip" title="YouTube Music Sync">
+            <span class="status-led led-red"></span>
+            <span>YT Music</span>
+          </div>
+          <button id="btnOpenSettings" class="btn-deck-icon" title="Settings & Auth" aria-label="Open settings and authentication modal">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ========================================================= -->
+      <!-- MAIN BODY SPLIT CANVAS -->
+      <!-- ========================================================= -->
+      <div class="deck-split-canvas">
         
-        <!-- Top Action Bar: Import & AI Control Center -->
-        <section class="control-grid">
+        <!-- LEFT WING: DARK ANALOG TURNTABLE & HERO DECK -->
+        <aside class="deck-left-wing">
           
-          <!-- Box 1: Multi-source Importer -->
-          <div class="glass-panel importer-panel">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <span class="step-num">1</span>
-                <div>
-                  <h2>Import Sources</h2>
-                  <p class="panel-desc">Paste Spotify, SoundCloud, YouTube links, CSV, or Scan Local Folder</p>
+          <!-- Vinyl Player Centerpiece -->
+          <div class="turntable-assembly">
+            <div class="vinyl-record-wrap">
+              <div class="vinyl-disc" id="turntableDisc">
+                <div class="vinyl-groove-rings"></div>
+                <div class="vinyl-center-label" id="vinylCenterLabel">
+                  <div class="vinyl-center-art" id="vinylCenterArt"></div>
+                  <div class="vinyl-spindle-hole"></div>
                 </div>
               </div>
-              <div class="source-badges">
-                <span class="badge badge-local">💾 Local Audio</span>
-                <span class="badge badge-csv">📁 CSV File</span>
-                <span class="badge badge-spotify">Spotify</span>
-                <span class="badge badge-soundcloud">SoundCloud</span>
-                <span class="badge badge-yt">YT Music</span>
-              </div>
-            </div>
-
-            <div class="importer-body">
-              <input type="file" id="fileUploadInput" accept=".csv,.txt" style="display: none;">
-              <textarea id="importInput" placeholder="Paste links, text, or drop/upload a CSV file:
-https://open.spotify.com/playlist/...
-https://soundcloud.com/artist/sets/...
-Skrillex & Fred again.. - Rumble
-Overmono - Good Lies" rows="4"></textarea>
-              
-              <div class="importer-actions">
-                <div class="quick-helpers">
-                  <button id="btnOpenScanLocalModal" class="btn btn-secondary btn-sm" title="Scan a music folder on your computer">
-                    💾 Scan Local Music
-                  </button>
-                  <button id="btnUploadCsv" class="btn btn-secondary btn-sm" title="Upload CSV song list">
-                    📁 Upload CSV
-                  </button>
-                  <button id="btnImportYtLikes" class="btn btn-secondary btn-sm" title="Import Liked Songs directly from YouTube Music">
-                    ❤️ YT Likes
-                  </button>
-                  <button id="btnLoadSample" class="btn btn-ghost btn-sm" title="Try demo sample data">
-                    ✨ Demo
-                  </button>
-                </div>
-                <div class="action-right">
-                  <button id="btnClearTracks" class="btn btn-outline-danger btn-sm">Clear All</button>
-                  <button id="btnImport" class="btn btn-primary">
-                    <span class="spinner hidden" id="importSpinner"></span>
-                    <span>📥 Extract & Import</span>
-                  </button>
-                </div>
+              <div class="turntable-tonearm" id="turntableTonearm">
+                <div class="tonearm-base"></div>
+                <div class="tonearm-lever"></div>
+                <div class="tonearm-headshell"></div>
               </div>
             </div>
           </div>
 
-          <!-- Box 2: AI Genre Classifier Hub -->
-          <div class="glass-panel ai-panel">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <span class="step-num">2</span>
-                <div>
-                  <h2>AI Sub-genre Engine</h2>
-                  <p class="panel-desc">Automatic intelligent genre, vibe categorization & ID3 tagging</p>
-                </div>
-              </div>
-              <div class="ai-model-tag" id="activeModelTag">Gemini 3.7 Flash</div>
+          <!-- Side A Editorial Header -->
+          <div class="deck-side-banner">
+            <div class="side-lettering">
+              <span class="side-big">A</span>
+              <span class="side-word">side</span>
             </div>
-
-            <div class="ai-body">
-              <div class="stats-overview">
-                <div class="stat-card">
-                  <span class="stat-val" id="statTotalTracks">0</span>
-                  <span class="stat-lbl">Total Songs</span>
-                </div>
-                <div class="stat-card">
-                  <span class="stat-val" id="statClassified">0</span>
-                  <span class="stat-lbl">Classified</span>
-                </div>
-                <div class="stat-card">
-                  <span class="stat-val" id="statLocal">0</span>
-                  <span class="stat-lbl">Local Files</span>
-                </div>
-                <div class="stat-card">
-                  <span class="stat-val" id="statSynced">0</span>
-                  <span class="stat-lbl">Synced</span>
-                </div>
-              </div>
-
-              <div class="ai-actions">
-                <div class="ai-progress-wrapper hidden" id="aiProgressWrapper">
-                  <div class="progress-info-row">
-                    <span class="progress-status-label" id="aiProgressLabel">✨ Classifying songs in batches...</span>
-                    <span class="progress-percentage-label" id="aiProgressPercent">0%</span>
-                  </div>
-                  <div class="progress-bar-wrapper">
-                    <div class="progress-bar-fill progress-bar-neon" id="aiProgressBarFill"></div>
-                  </div>
-                  <div class="progress-current-batch" id="aiProgressSubtext">0 / 0 tracks analyzed</div>
-                </div>
-
-                <div class="classify-options-row">
-                  <label class="checkbox-container">
-                    <input type="checkbox" id="chkOnlyUncategorized" checked>
-                    <span class="checkmark"></span>
-                    <span class="checkbox-text">⚡ Hanya klasifikasikan lagu yang belum selesai (Skip yang sudah ada subgenre)</span>
-                  </label>
-                </div>
-
-                <button id="btnClassify" class="btn btn-gradient btn-full">
-                  <span class="spinner hidden" id="classifySpinner"></span>
-                  <span id="btnClassifyText">✨ Run AI Sub-genre Classifier</span>
-                </button>
-              </div>
+            <div class="active-playing-info" id="activePlayingInfo">
+              <div class="playing-tag-pill" id="activePlayingGenre">Alt Rock / Indie</div>
+              <div class="playing-title" id="activePlayingTitle">Select a track to cue record</div>
+              <div class="playing-artist" id="activePlayingArtist">SoundSort AI Analog Engine</div>
             </div>
           </div>
 
-        </section>
+          <!-- Quick Actions Panel in Left Wing -->
+          <div class="left-controls-panel">
+            <div class="deck-stat-pills">
+              <div class="deck-stat-item">
+                <span class="stat-num" id="statTotalTracks">0</span>
+                <span class="stat-desc">Tracks In Deck</span>
+              </div>
+              <div class="deck-stat-item">
+                <span class="stat-num" id="statClassified">0</span>
+                <span class="stat-desc">AI Classified</span>
+              </div>
+              <div class="deck-stat-item">
+                <span class="stat-num" id="statLocal">0</span>
+                <span class="stat-desc">Local Files</span>
+              </div>
+              <div class="deck-stat-item">
+                <span class="stat-num" id="statSynced">0</span>
+                <span class="stat-desc">Synced to YT</span>
+              </div>
+            </div>
 
-        <!-- Main Curation Studio & Fine-Tuning Area -->
-        <section class="glass-panel curation-panel">
+            <!-- AI Classification Quick Trigger -->
+            <div class="ai-deck-trigger-box">
+              <div class="ai-progress-wrapper hidden" id="aiProgressWrapper">
+                <div class="progress-info-row">
+                  <span class="progress-status-label" id="aiProgressLabel">✨ Classifying in batches...</span>
+                  <span class="progress-percentage-label" id="aiProgressPercent">0%</span>
+                </div>
+                <div class="progress-bar-wrapper">
+                  <div class="progress-bar-fill" id="aiProgressBarFill"></div>
+                </div>
+                <div class="progress-current-batch" id="aiProgressSubtext">0 / 0 analyzed</div>
+              </div>
+
+              <div class="classify-options-row">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="chkOnlyUncategorized" checked>
+                  <span class="checkmark"></span>
+                  <span class="checkbox-text">Skip yang sudah terklasifikasi</span>
+                </label>
+              </div>
+
+              <button id="btnClassify" class="btn-analog-red btn-full">
+                <span class="spinner hidden" id="classifySpinner"></span>
+                <span id="btnClassifyText">⚡ Run Gemini AI Sub-genre Classifier</span>
+              </button>
+            </div>
+
+          </div>
+
+        </aside>
+
+        <!-- RIGHT WING: WARM CREAM EDITORIAL SLEEVE (CURATION STUDIO) -->
+        <section class="deck-right-wing">
           
-          <!-- Filter & Search Toolbar -->
-          <div class="studio-toolbar">
-            <div class="toolbar-left">
-              <div class="search-box">
+          <!-- ======================================================= -->
+          <!-- TAB 1: TRACK LIBRARY -->
+          <!-- ======================================================= -->
+          <div id="sectionLibrary" class="tab-content active">
+            
+            <!-- Sleeve Header & Source Importer -->
+            <div class="sleeve-card-section">
+              <div class="sleeve-section-title-row">
+                <div>
+                  <h2 class="sleeve-title">Sound Ingestion & Track Curation</h2>
+                  <p class="sleeve-subtitle">Paste links, drop CSV files, or scan local PC audio folders to curate</p>
+                </div>
+                <div class="source-badges-deck">
+                  <span class="sleeve-chip">💾 Local Audio</span>
+                  <span class="sleeve-chip">📁 CSV List</span>
+                  <span class="sleeve-chip">Spotify</span>
+                  <span class="sleeve-chip">YT Music</span>
+                </div>
+              </div>
+
+              <div class="importer-deck-box">
+                <input type="file" id="fileUploadInput" accept=".csv,.txt" style="display: none;">
+                <textarea id="importInput" placeholder="Paste links, tracklists (Artist - Title), or drop CSV file...
+Arctic Monkeys - 505
+Paramore - Misery Business
+6arelyhuman - Hands Up!
+Sheila On 7 - Dan" rows="3"></textarea>
+                
+                <div class="importer-deck-footer">
+                  <div class="importer-left-btns">
+                    <button id="btnOpenScanLocalModal" class="btn-sleeve-btn" title="Scan local music folder">
+                      💾 Scan Local Music
+                    </button>
+                    <button id="btnUploadCsv" class="btn-sleeve-btn" title="Upload CSV song list">
+                      📁 Upload CSV
+                    </button>
+                    <button id="btnImportYtLikes" class="btn-sleeve-btn" title="Import Liked Songs from YouTube Music">
+                      ❤️ YT Likes
+                    </button>
+                    <button id="btnLoadSample" class="btn-sleeve-ghost" title="Load sample tracks">
+                      ✨ Demo
+                    </button>
+                  </div>
+                  <div class="importer-right-btns">
+                    <button id="btnClearTracks" class="btn-sleeve-danger">Clear All</button>
+                    <button id="btnImport" class="btn-analog-dark">
+                      <span class="spinner hidden" id="importSpinner"></span>
+                      <span>📥 Extract & Import</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Library Filtering & View Options -->
+            <div class="sleeve-filter-bar">
+              <div class="sleeve-search-wrap">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="filterSearch" placeholder="Search title, artist, subgenre...">
+                <input type="text" id="filterSearch" placeholder="Search title, artist, genre, or vibe...">
               </div>
 
-              <div class="filter-dropdowns">
+              <div class="sleeve-select-group">
                 <select id="filterSource">
-                  <option value="">All Sources (Local & Online)</option>
-                  <option value="local">💾 Local Audio Only</option>
-                  <option value="online">🌐 Online Tracks Only</option>
+                  <option value="">All Sources</option>
+                  <option value="local">💾 Local Audio</option>
+                  <option value="online">🌐 Online Tracks</option>
                 </select>
                 <select id="filterMainGenre">
                   <option value="">All Main Genres</option>
@@ -215,394 +235,357 @@ Overmono - Good Lies" rows="4"></textarea>
                   <option value="">All Sub-genres</option>
                 </select>
               </div>
-            </div>
 
-            <div class="toolbar-right">
-              <!-- View toggles & Bulk actions -->
-              <div class="view-toggle-group">
-                <button id="btnViewGrid" class="view-btn active" title="Grouped Cards View">
+              <div class="sleeve-view-toggles">
+                <button id="btnViewGrid" class="sleeve-view-btn active" title="Grouped View" aria-label="Grouped card view">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                  <span>Sub-genre Groups</span>
                 </button>
-                <button id="btnViewTable" class="view-btn" title="Flat Table View">
+                <button id="btnViewTable" class="sleeve-view-btn" title="Table View" aria-label="Table view">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-                  <span>Table</span>
                 </button>
               </div>
-
-              <button id="btnOpenMergeModal" class="btn btn-secondary btn-sm" title="Merge 2 sub-genres into one">
-                🔀 Merge Sub-genres
-              </button>
-              <button id="btnQuickCreatePlaylistFromFilter" class="btn btn-secondary btn-sm" title="Create a new web playlist from current filtered songs">
-                ➕ Create Playlist From Filter
-              </button>
-              <button id="btnOpenCustomPlaylistModal" class="btn btn-gradient btn-sm" title="Build a custom playlist based on specific genres or vibes">
-                ✨ Custom Playlist
-              </button>
             </div>
-          </div>
 
-          <!-- Dynamic Studio Content (Cards View or Table View) -->
-          <div id="studioContent" class="studio-content">
-            <div class="empty-state" id="emptyStatePlaceholder">
-              <div class="empty-icon">🎵</div>
-              <h3>No tracks loaded yet</h3>
-              <p>Import songs using links, CSV, or Scan Local Music above to start sorting!</p>
-            </div>
-          </div>
-
-        </section>
-
-      </div>
-
-      <!-- ============================================================= -->
-      <!-- TAB 2: MY WEB PLAYLISTS STUDIO VIEW -->
-      <!-- ============================================================= -->
-      <div id="sectionPlaylists" class="tab-content">
-        <section class="glass-panel playlists-studio-panel">
-          <div class="playlists-studio-header">
-            <div class="header-info">
-              <h2>📑 Web Playlists Studio</h2>
-              <p class="section-desc">Create playlists on the web, add songs by genre or pick one by one, then export them to YouTube Music or download locally in 1 click.</p>
-            </div>
-            <div class="header-actions">
-              <button id="btnOpenCreatePlaylistModal" class="btn btn-primary">
-                ➕ Create New Playlist
-              </button>
-              <button id="btnAutoGeneratePlaylists" class="btn btn-secondary" title="Automatically create web playlists for every detected subgenre in your library">
-                ⚡ Auto-Create From Genres
-              </button>
-              <button id="btnExportAllPlaylists" class="btn btn-yt-action" title="Export all web playlists to your YouTube Music account">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-                <span>Export All to YouTube Music</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Playlists Grid List -->
-          <div class="playlists-grid" id="playlistsGrid">
-            <!-- Populated dynamically with Playlist Cards -->
-          </div>
-        </section>
-      </div>
-
-      <!-- ============================================================= -->
-      <!-- TAB 3: LOCAL FILES & DOWNLOADS HUB -->
-      <!-- ============================================================= -->
-      <div id="sectionLocal" class="tab-content">
-        <section class="local-hub-grid">
-          
-          <!-- Card 1: Local Audio Scanner -->
-          <div class="glass-panel local-card">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <span class="step-num">💾</span>
-                <div>
-                  <h2>Scan Local Music Library</h2>
-                  <p class="panel-desc">Scan folders on your computer for MP3, FLAC, M4A, WAV, or OGG files.</p>
-                </div>
+            <!-- Dynamic Tracks Content -->
+            <div id="studioContent" class="sleeve-tracks-scroll-area">
+              <div class="empty-state" id="emptyStatePlaceholder">
+                <div class="empty-icon">🎵</div>
+                <h3>No tracks loaded yet</h3>
+                <p>Import songs using links, CSV, or Scan Local Music above to start sorting!</p>
               </div>
             </div>
-            <div class="local-card-body">
-              <div class="form-group">
-                <label for="inputLocalScanPath">Music Folder Path</label>
-                <div style="display: flex; gap: 8px;">
-                  <input type="text" id="inputLocalScanPath" value="C:\Users\Felix\Music" placeholder="e.g. C:\Users\Felix\Music">
-                  <button id="btnTriggerScanPath" class="btn btn-primary">
-                    <span class="spinner hidden" id="scanSpinner"></span>
-                    <span>🔍 Scan Folder</span>
+
+          </div>
+
+          <!-- ======================================================= -->
+          <!-- TAB 2: PLAYLISTS STUDIO -->
+          <!-- ======================================================= -->
+          <div id="sectionPlaylists" class="tab-content">
+            <div class="sleeve-card-section">
+              <div class="sleeve-section-title-row">
+                <div>
+                  <h2 class="sleeve-title">Web Playlists Studio</h2>
+                  <p class="sleeve-subtitle">Curate playlists on the web, add songs by genre or track by track, then export to YouTube Music or download locally.</p>
+                </div>
+                <div class="playlist-header-btns">
+                  <button id="btnOpenCreatePlaylistModal" class="btn-analog-dark">➕ Create Playlist</button>
+                  <button id="btnAutoGeneratePlaylists" class="btn-sleeve-btn">⚡ Auto-From Genres</button>
+                  <button id="btnExportAllPlaylists" class="btn-analog-red">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                    <span>Export All to YT</span>
                   </button>
                 </div>
               </div>
-              <div class="path-suggestions">
-                <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Music')">📁 C:\Users\Felix\Music</span>
-                <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Downloads')">📁 C:\Users\Felix\Downloads</span>
-                <span class="badge badge-draft" onclick="setScanPath('downloads')">📁 Project downloads/</span>
-              </div>
+
+              <!-- Playlists Grid -->
+              <div class="playlists-grid" id="playlistsGrid"></div>
             </div>
           </div>
 
-          <!-- Card 2: Bulk ID3 Tagger -->
-          <div class="glass-panel local-card">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <span class="step-num">🏷️</span>
+          <!-- ======================================================= -->
+          <!-- TAB 3: LOCAL FILES & DOWNLOADS HUB -->
+          <!-- ======================================================= -->
+          <div id="sectionLocal" class="tab-content">
+            <div class="sleeve-card-section">
+              <div class="sleeve-section-title-row">
                 <div>
-                  <h2>Auto-Tag Local Files</h2>
-                  <p class="panel-desc">Write AI-classified Genre, Subgenre, Grouping & Vibe directly into local audio files.</p>
+                  <h2 class="sleeve-title">Local Audio Files & ID3 Tagger Hub</h2>
+                  <p class="sleeve-subtitle">Scan your PC music library, write AI-classified tags directly to audio files, and download online tracks.</p>
                 </div>
               </div>
-            </div>
-            <div class="local-card-body">
-              <p class="section-desc" style="margin-bottom: 14px;">
-                Permanently embeds metadata into ID3v2 (MP3), MP4/M4A tags, FLAC VorbisComment, or OGG files on disk so they appear organized in music players (AIMP, iTunes, Foobar2000, Windows Media Player).
-              </p>
-              <button id="btnTagAllLocalTracks" class="btn btn-gradient btn-full">
-                <span class="spinner hidden" id="tagAllSpinner"></span>
-                <span>🏷️ Tag All Classified Local Files (<span id="localUntaggedCount">0</span> ready)</span>
-              </button>
-            </div>
-          </div>
 
-          <!-- Card 3: Genre Folder Organizer -->
-          <div class="glass-panel local-card">
-            <div class="panel-header">
-              <div class="panel-title-group">
-                <span class="step-num">📂</span>
-                <div>
-                  <h2>Organize Into Genre Folders</h2>
-                  <p class="panel-desc">Move or copy local files into structured folders named by their AI genre.</p>
+              <!-- 3 Grid Cards -->
+              <div class="local-hub-grid">
+                
+                <!-- Card 1: Scanner -->
+                <div class="local-deck-card">
+                  <div class="card-icon-tag">💾 SCANNER</div>
+                  <h3>Scan Music Folder</h3>
+                  <p class="card-desc">Scan your PC for MP3, FLAC, M4A, OGG, or WAV files.</p>
+                  <div class="form-group" style="margin-top: 10px;">
+                    <div style="display: flex; gap: 6px;">
+                      <input type="text" id="inputLocalScanPath" value="C:\Users\Felix\Music" placeholder="C:\Users\Felix\Music">
+                      <button id="btnTriggerScanPath" class="btn-analog-dark">
+                        <span class="spinner hidden" id="scanSpinner"></span>
+                        <span>Scan</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="path-suggestions">
+                    <span class="badge badge-draft" onclick="setScanPath('C:\\Users\\Felix\\Music')">C:\Users\Felix\Music</span>
+                    <span class="badge badge-draft" onclick="setScanPath('downloads')">downloads/</span>
+                  </div>
                 </div>
+
+                <!-- Card 2: Tagger -->
+                <div class="local-deck-card">
+                  <div class="card-icon-tag">🏷️ ID3 TAGGER</div>
+                  <h3>Auto-Tag Local Audio</h3>
+                  <p class="card-desc">Embed AI Genre, Sub-genre & Vibe directly into local audio files on disk.</p>
+                  <button id="btnTagAllLocalTracks" class="btn-analog-red btn-full" style="margin-top: 18px;">
+                    <span class="spinner hidden" id="tagAllSpinner"></span>
+                    <span>🏷️ Tag All Local Files (<span id="localUntaggedCount">0</span> ready)</span>
+                  </button>
+                </div>
+
+                <!-- Card 3: Organizer -->
+                <div class="local-deck-card">
+                  <div class="card-icon-tag">📂 ORGANIZER</div>
+                  <h3>Sort to Genre Folders</h3>
+                  <p class="card-desc">Organize local audio into clean subfolders named by AI genre.</p>
+                  <div class="form-group" style="margin-top: 10px;">
+                    <input type="text" id="inputOrganizeDestPath" value="C:\Users\Felix\Music\Sorted" placeholder="Destination path">
+                  </div>
+                  <button id="btnOrganizeLocalFiles" class="btn-sleeve-btn btn-full">
+                    <span>📁 Organize Files</span>
+                  </button>
+                </div>
+
               </div>
-            </div>
-            <div class="local-card-body">
-              <div class="form-group">
-                <label for="inputOrganizeDestPath">Target Directory for Organized Folders</label>
-                <input type="text" id="inputOrganizeDestPath" value="C:\Users\Felix\Music\Sorted" placeholder="e.g. C:\Users\Felix\Music\Sorted">
+
+              <!-- Local Tracks Table -->
+              <div style="margin-top: 24px;">
+                <div class="sleeve-section-title-row">
+                  <div>
+                    <h3 style="font-family: var(--font-heading); font-size: 1.15rem;">Local Tracks Library</h3>
+                  </div>
+                  <button id="btnRefreshLocalList" class="btn-sleeve-ghost">🔄 Refresh</button>
+                </div>
+                <div id="localTracksListTableContainer" style="margin-top: 12px;"></div>
               </div>
-              <div class="classify-options-row">
-                <label class="checkbox-container">
-                  <input type="checkbox" id="chkCopyInsteadOfMove" checked>
-                  <span class="checkmark"></span>
-                  <span class="checkbox-text">Copy files (Keep original files safe in place)</span>
-                </label>
-              </div>
-              <button id="btnOrganizeLocalFiles" class="btn btn-secondary btn-full">
-                <span>📁 Organize Files by Genre</span>
-              </button>
+
             </div>
           </div>
 
         </section>
 
-        <!-- Local Files List Table -->
-        <section class="glass-panel" style="margin-top: 24px; padding: 20px;">
-          <div class="playlists-studio-header">
-            <div>
-              <h3>💾 Local & Downloaded Music Library</h3>
-              <p class="section-desc">Manage local audio files, check tag status, and open file locations.</p>
-            </div>
-            <div class="header-actions">
-              <button id="btnRefreshLocalList" class="btn btn-ghost btn-sm">🔄 Refresh List</button>
-            </div>
-          </div>
-          <div id="localTracksListTableContainer">
-            <!-- Populated dynamically with Local Tracks -->
-          </div>
-        </section>
       </div>
+
+      <!-- ========================================================= -->
+      <!-- BOTTOM ANALOG TRANSPORT & WAVEFORM BAR -->
+      <!-- ========================================================= -->
+      <footer class="deck-bottom-player">
+        <div class="player-left-controls">
+          <button class="transport-btn" id="btnPlayerPrev" title="Previous Track" aria-label="Previous track">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
+          </button>
+          <button class="transport-play-btn" id="btnPlayerPlayToggle" title="Play / Pause Vinyl" aria-label="Play or pause vinyl">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" id="playIconSvg"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+          <button class="transport-btn" id="btnPlayerNext" title="Next Track" aria-label="Next track">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+          </button>
+        </div>
+
+        <!-- Waveform Visualizer Bar -->
+        <div class="analog-waveform-center">
+          <div class="waveform-bars" id="waveformVisualizer">
+            <span class="wave-bar" style="height: 35%;"></span>
+            <span class="wave-bar" style="height: 60%;"></span>
+            <span class="wave-bar" style="height: 90%;"></span>
+            <span class="wave-bar" style="height: 45%;"></span>
+            <span class="wave-bar" style="height: 75%;"></span>
+            <span class="wave-bar active" style="height: 100%;"></span>
+            <span class="wave-bar active" style="height: 85%;"></span>
+            <span class="wave-bar active" style="height: 65%;"></span>
+            <span class="wave-bar active" style="height: 95%;"></span>
+            <span class="wave-bar active" style="height: 50%;"></span>
+            <span class="wave-bar active" style="height: 70%;"></span>
+            <span class="wave-bar active" style="height: 40%;"></span>
+            <span class="wave-bar" style="height: 30%;"></span>
+            <span class="wave-bar" style="height: 60%;"></span>
+            <span class="wave-bar" style="height: 80%;"></span>
+            <span class="wave-bar" style="height: 55%;"></span>
+            <span class="wave-bar" style="height: 25%;"></span>
+            <span class="wave-bar" style="height: 65%;"></span>
+            <span class="wave-bar" style="height: 40%;"></span>
+            <span class="wave-bar" style="height: 20%;"></span>
+          </div>
+          <div class="player-track-snippet">
+            <span id="deckPlayerTitle">SoundSort Analog Vinylist</span>
+            <span class="divider-dot">&bull;</span>
+            <span id="deckPlayerArtist">Ready to Cue</span>
+          </div>
+        </div>
+
+        <!-- Volume Knob / Indicator -->
+        <div class="player-right-knob">
+          <div class="analog-knob" title="Master Level">
+            <div class="knob-indicator"></div>
+          </div>
+          <span class="knob-label">HI-FI 45 RPM</span>
+        </div>
+      </footer>
 
       <!-- Sticky / Floating Multi-Selection Action Bar -->
       <div id="selectionActionBar" class="selection-action-bar hidden">
         <div class="selection-info">
           <span class="selection-count-badge" id="selectedCountBadge">0</span>
-          <span>songs selected</span>
+          <span>tracks cued</span>
         </div>
         <div class="selection-actions">
-          <button id="btnAddSelectedToPlaylist" class="btn btn-primary btn-sm">
-            ➕ Add to Playlist...
-          </button>
-          <button id="btnDownloadSelectedTracks" class="btn btn-secondary btn-sm" title="Download selected online songs to MP3 with full ID3 tags">
-            ⬇️ Download MP3 + Tags
-          </button>
-          <button id="btnTagSelectedTracks" class="btn btn-secondary btn-sm" title="Write ID3 tags to selected local files">
-            🏷️ Write Tags
-          </button>
-          <button id="btnDeselectAllTracks" class="btn btn-ghost btn-sm">
-            Deselect All
-          </button>
+          <button id="btnAddSelectedToPlaylist" class="btn-analog-dark btn-sm">➕ Add to Playlist</button>
+          <button id="btnDownloadSelectedTracks" class="btn-sleeve-btn btn-sm">⬇️ Download MP3 + Tags</button>
+          <button id="btnTagSelectedTracks" class="btn-sleeve-btn btn-sm">🏷️ Write Tags</button>
+          <button id="btnDeselectAllTracks" class="btn-sleeve-ghost btn-sm">Deselect</button>
         </div>
       </div>
 
-    </main>
+    </div>
 
-    <!-- Modal: Settings & Auth Wizard -->
+    <!-- ========================================================= -->
+    <!-- MODALS -->
+    <!-- ========================================================= -->
+
+    <!-- Modal: Settings -->
     <div class="modal-backdrop hidden" id="settingsModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
-          <h3>Settings & API Keys</h3>
+          <h3>Deck Settings & APIs</h3>
           <button class="modal-close" data-close="settingsModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          
-          <!-- Section A: Gemini API Key -->
           <div class="settings-section">
-            <h4>1. Gemini AI Configuration</h4>
-            <p class="section-desc">Used for sub-genre analysis and vibe categorization.</p>
+            <h4>1. Google Gemini AI Key</h4>
             <div class="form-group">
-              <label for="inputGeminiKey">Gemini API Key</label>
               <input type="password" id="inputGeminiKey" placeholder="AIzaSy...">
-              <small class="help-text">Get free key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a></small>
             </div>
             <div class="form-group">
-              <label for="selectGeminiModel">AI Model</label>
+              <label for="selectGeminiModel">Model</label>
               <select id="selectGeminiModel">
-                <option value="gemini-3.7-flash">Gemini 3.7 Flash (Recommended &bull; Fast & Smart)</option>
+                <option value="gemini-3.7-flash">Gemini 3.7 Flash (Recommended)</option>
                 <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite (High Speed)</option>
-                <option value="gemini-3.1-flash-lite">Gemini 3.1 Flash-Lite</option>
-                <option value="gemini-3-flash-preview">Gemini 3 Flash (Preview)</option>
-                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview &bull; Deepest Reasoning)</option>
+                <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite</option>
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Preview)</option>
               </select>
             </div>
           </div>
 
-          <!-- Section B: YouTube Music Connection -->
           <div class="settings-section">
             <h4>2. YouTube Music Connection</h4>
-            <p class="section-desc">Connect your YT Music account to auto-generate playlists.</p>
-            
             <div class="auth-status-indicator" id="ytAuthIndicator">
               <span class="auth-status-badge badge-disconnected">Not Connected</span>
             </div>
-
-            <div class="form-group">
-              <label for="inputYtHeaders">Browser Request Headers / Cookie</label>
-              <textarea id="inputYtHeaders" rows="3" placeholder="Paste Request Headers or Cookie from music.youtube.com network tab..."></textarea>
-              <div class="guide-accordion">
-                <details>
-                  <summary>How to get YT Music headers (1 minute setup)</summary>
-                  <ol class="guide-steps">
-                    <li>Buka <a href="https://music.youtube.com" target="_blank" rel="noopener">music.youtube.com</a> di browser dan pastikan login.</li>
-                    <li>Buka Developer Tools (tekan <code>F12</code>) lalu klik tab <strong>Network</strong>.</li>
-                    <li>Klik sembarang lagu atau playlist di YouTube Music agar ada request jaringan.</li>
-                    <li>Cari request bernama <code>browse</code> atau <code>search</code> di daftar network.</li>
-                    <li>Klik kanan request tersebut &rarr; <strong>Copy &rarr; Copy Request Headers</strong>.</li>
-                    <li>Paste ke dalam kotak teks di atas lalu klik <strong>Connect YouTube Music</strong>.</li>
-                  </ol>
-                </details>
-              </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <textarea id="inputYtHeaders" rows="3" placeholder="Paste Request Headers or Cookie from music.youtube.com..."></textarea>
             </div>
-            <button id="btnConnectYT" class="btn btn-secondary btn-full">Connect YouTube Music</button>
+            <button id="btnConnectYT" class="btn-sleeve-btn btn-full">Connect YouTube Music</button>
           </div>
 
-          <!-- Section C: Preferences & Download Folder -->
           <div class="settings-section">
-            <h4>3. Folders & Preferences</h4>
+            <h4>3. Naming & Download Folder</h4>
             <div class="form-group">
-              <label for="inputPlaylistPrefix">Prefix for Generated Playlists</label>
-              <input type="text" id="inputPlaylistPrefix" value="SoundSort: " placeholder="e.g. SoundSort: or [AI] ">
+              <input type="text" id="inputPlaylistPrefix" value="SoundSort: " placeholder="SoundSort: ">
             </div>
             <div class="form-group">
-              <label for="inputDownloadFolder">Default Downloads Directory</label>
-              <input type="text" id="inputDownloadFolder" value="downloads" placeholder="e.g. downloads or C:\Users\Felix\Music\Downloads">
+              <input type="text" id="inputDownloadFolder" value="downloads" placeholder="downloads">
             </div>
           </div>
-
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="settingsModal">Cancel</button>
-          <button id="btnSaveSettings" class="btn btn-primary">Save Settings</button>
+          <button class="btn-sleeve-ghost" data-close="settingsModal">Cancel</button>
+          <button id="btnSaveSettings" class="btn-analog-dark">Save Settings</button>
         </div>
       </div>
     </div>
 
     <!-- Modal: Scan Local Folder -->
     <div class="modal-backdrop hidden" id="scanLocalModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
-          <h3>💾 Scan Local Music Folder</h3>
+          <h3>💾 Scan Music Folder</h3>
           <button class="modal-close" data-close="scanLocalModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc">Enter the folder path containing your audio files (.mp3, .flac, .m4a, .ogg) to import them into SoundSort:</p>
-          <div class="form-group">
-            <label for="modalInputScanPath">Folder Path</label>
+          <p class="section-desc">Enter directory path containing audio files (.mp3, .flac, .m4a, .ogg):</p>
+          <div class="form-group" style="margin-top: 10px;">
             <input type="text" id="modalInputScanPath" value="C:\Users\Felix\Music" placeholder="C:\Users\Felix\Music">
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="scanLocalModal">Cancel</button>
-          <button id="btnConfirmScanLocal" class="btn btn-primary">Start Scanning</button>
+          <button class="btn-sleeve-ghost" data-close="scanLocalModal">Cancel</button>
+          <button id="btnConfirmScanLocal" class="btn-analog-dark">Start Scanning</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Create / New Web Playlist -->
+    <!-- Modal: Create Playlist -->
     <div class="modal-backdrop hidden" id="createPlaylistModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
-          <h3>➕ Create New Web Playlist</h3>
+          <h3>➕ Create New Playlist</h3>
           <button class="modal-close" data-close="createPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc">Create an empty playlist or pre-populate it with a whole genre from your library.</p>
           <div class="form-group">
             <label for="inputNewPlaylistTitle">Playlist Title *</label>
-            <input type="text" id="inputNewPlaylistTitle" placeholder="e.g. Headbang, Japanese Chill, Weekend Rave...">
+            <input type="text" id="inputNewPlaylistTitle" placeholder="e.g. Vintage Rock, Tokyo City Pop...">
           </div>
           <div class="form-group">
-            <label for="inputNewPlaylistDesc">Description (Optional)</label>
-            <input type="text" id="inputNewPlaylistDesc" placeholder="e.g. Curated high energy bangers">
+            <label for="inputNewPlaylistDesc">Description</label>
+            <input type="text" id="inputNewPlaylistDesc" placeholder="Curated collection">
           </div>
           <div class="form-group">
-            <label for="selectNewPlaylistGenre">Pre-fill with all songs from Genre / Subgenre (Optional)</label>
+            <label for="selectNewPlaylistGenre">Pre-fill Genre (Optional)</label>
             <select id="selectNewPlaylistGenre">
-              <option value="">-- Start Empty (Add songs manually later) --</option>
+              <option value="">-- Start Empty --</option>
             </select>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="createPlaylistModal">Cancel</button>
-          <button id="btnConfirmCreatePlaylist" class="btn btn-primary">Create Playlist</button>
+          <button class="btn-sleeve-ghost" data-close="createPlaylistModal">Cancel</button>
+          <button id="btnConfirmCreatePlaylist" class="btn-analog-dark">Create Playlist</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Add Songs / Genre to Existing Playlist -->
+    <!-- Modal: Add To Playlist -->
     <div class="modal-backdrop hidden" id="addToPlaylistModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
           <h3>➕ Add to Playlist</h3>
           <button class="modal-close" data-close="addToPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc" id="addToPlaylistSubtext">Select which playlist you want to add the selected song(s) to:</p>
-          
-          <div class="form-group">
-            <label for="selectTargetPlaylist">Choose Playlist</label>
+          <p class="section-desc" id="addToPlaylistSubtext">Choose target playlist:</p>
+          <div class="form-group" style="margin-top: 10px;">
             <select id="selectTargetPlaylist"></select>
           </div>
-
-          <div style="text-align: center; margin: 12px 0; color: var(--text-muted); font-size: 0.85rem;">— OR CREATE NEW —</div>
-
+          <div style="text-align: center; margin: 10px 0; color: #8b8882; font-size: 0.85rem;">— OR CREATE NEW —</div>
           <div class="form-group">
-            <label for="inputQuickNewPlaylistTitle">Create New Playlist Name</label>
-            <input type="text" id="inputQuickNewPlaylistTitle" placeholder="Type new playlist name to create on the fly...">
+            <input type="text" id="inputQuickNewPlaylistTitle" placeholder="New playlist name...">
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="addToPlaylistModal">Cancel</button>
-          <button id="btnConfirmAddToPlaylist" class="btn btn-primary">Add Songs</button>
+          <button class="btn-sleeve-ghost" data-close="addToPlaylistModal">Cancel</button>
+          <button id="btnConfirmAddToPlaylist" class="btn-analog-dark">Add Tracks</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Add Entire Genre to Playlist -->
+    <!-- Modal: Add Entire Genre -->
     <div class="modal-backdrop hidden" id="addGenreToPlaylistModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
           <h3>🎵 Add Entire Genre to Playlist</h3>
           <button class="modal-close" data-close="addGenreToPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc" id="addGenreToPlaylistDesc">Select a genre from your library to dump all its matching tracks into this playlist:</p>
-          
-          <div class="form-group">
-            <label for="selectGenreToDump">Select Genre / Sub-genre</label>
+          <p class="section-desc" id="addGenreToPlaylistDesc">Select genre to add all its tracks:</p>
+          <div class="form-group" style="margin-top: 10px;">
             <select id="selectGenreToDump"></select>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="addGenreToPlaylistModal">Cancel</button>
-          <button id="btnConfirmAddGenreToPlaylist" class="btn btn-primary">Add All Genre Songs</button>
+          <button class="btn-sleeve-ghost" data-close="addGenreToPlaylistModal">Cancel</button>
+          <button id="btnConfirmAddGenreToPlaylist" class="btn-analog-dark">Add All Genre Songs</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Playlist Inspector & Track Viewer -->
+    <!-- Modal: Inspector -->
     <div class="modal-backdrop hidden" id="playlistInspectorModal">
-      <div class="modal-dialog glass-modal modal-lg">
+      <div class="modal-dialog vinyl-modal modal-lg">
         <div class="modal-header">
           <div class="inspector-title-group">
             <h3 id="inspectorPlaylistTitle">Playlist Title</h3>
@@ -613,109 +596,91 @@ Overmono - Good Lies" rows="4"></textarea>
         </div>
         <div class="modal-body">
           <p class="section-desc" id="inspectorPlaylistDesc"></p>
-          
           <div class="inspector-actions-bar">
-            <div class="search-box">
+            <div class="sleeve-search-wrap">
               <input type="text" id="inspectorSearch" placeholder="Filter songs in this playlist...">
             </div>
             <div class="inspector-btns">
-              <button id="btnInspectorDownloadAll" class="btn btn-secondary btn-sm" title="Download all playlist songs to local MP3 with ID3 tags">⬇️ Download Local MP3s</button>
-              <button id="btnInspectorAddGenre" class="btn btn-secondary btn-sm">➕ Add Entire Genre</button>
-              <button id="btnInspectorExportYT" class="btn btn-yt-action btn-sm">
+              <button id="btnInspectorDownloadAll" class="btn-sleeve-btn btn-sm">⬇️ Download MP3s</button>
+              <button id="btnInspectorAddGenre" class="btn-sleeve-btn btn-sm">➕ Add Genre</button>
+              <button id="btnInspectorExportYT" class="btn-analog-red btn-sm">
                 <span class="spinner hidden" id="inspectorExportSpinner"></span>
-                <span>🚀 Export to YouTube Music</span>
+                <span>🚀 Export YT</span>
               </button>
             </div>
           </div>
-
-          <div class="inspector-tracks-list" id="inspectorTracksList">
-            <!-- Dynamic song list with remove buttons -->
-          </div>
+          <div class="inspector-tracks-list" id="inspectorTracksList"></div>
         </div>
         <div class="modal-footer">
           <div class="inspector-footer-left">
-            <a id="inspectorYtLink" href="#" target="_blank" class="yt-direct-link hidden">
-              🔗 Open in YouTube Music ↗
-            </a>
+            <a id="inspectorYtLink" href="#" target="_blank" class="yt-direct-link hidden">🔗 Open in YouTube Music ↗</a>
           </div>
-          <button class="btn btn-ghost" data-close="playlistInspectorModal">Close</button>
+          <button class="btn-sleeve-ghost" data-close="playlistInspectorModal">Close</button>
         </div>
       </div>
     </div>
 
     <!-- Modal: Merge Subgenres -->
     <div class="modal-backdrop hidden" id="mergeModal">
-      <div class="modal-dialog glass-modal">
+      <div class="modal-dialog vinyl-modal">
         <div class="modal-header">
           <h3>🔀 Merge Sub-genres</h3>
           <button class="modal-close" data-close="mergeModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc">Combine all songs from one sub-genre into another.</p>
           <div class="form-group">
-            <label for="selectMergeSource">Source Sub-genre (To Be Merged)</label>
+            <label for="selectMergeSource">Source Sub-genre</label>
             <select id="selectMergeSource"></select>
           </div>
           <div class="form-group">
             <label for="inputMergeTarget">Target Sub-genre</label>
-            <input type="text" id="inputMergeTarget" placeholder="Type new name or select below" list="existingSubgenresList">
+            <input type="text" id="inputMergeTarget" list="existingSubgenresList">
             <datalist id="existingSubgenresList"></datalist>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="mergeModal">Cancel</button>
-          <button id="btnConfirmMerge" class="btn btn-gradient">Confirm Merge</button>
+          <button class="btn-sleeve-ghost" data-close="mergeModal">Cancel</button>
+          <button id="btnConfirmMerge" class="btn-analog-dark">Confirm Merge</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: Custom Playlist Builder by Genre / Vibe -->
+    <!-- Modal: Custom Playlist Builder -->
     <div class="modal-backdrop hidden" id="customPlaylistModal">
-      <div class="modal-dialog glass-modal modal-lg">
+      <div class="modal-dialog vinyl-modal modal-lg">
         <div class="modal-header">
-          <h3>✨ Build Custom Playlist by Genre & Vibe</h3>
+          <h3>✨ Build Custom Playlist</h3>
           <button class="modal-close" data-close="customPlaylistModal" aria-label="Close modal">&times;</button>
         </div>
         <div class="modal-body">
-          <p class="section-desc">Create a tailored playlist by combining specific genres, subgenres, or vibe moods from your library.</p>
-          
           <div class="form-group">
             <label for="inputCustomPlaylistTitle">Playlist Title</label>
-            <input type="text" id="inputCustomPlaylistTitle" placeholder="e.g. Late Night Cyberpunk, Workout Bass, Rainy Days...">
+            <input type="text" id="inputCustomPlaylistTitle" placeholder="e.g. Late Night Vinyl, Acoustic Moods...">
           </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
-              <label for="selectCustomMainGenre">Filter by Main Genre</label>
-              <select id="selectCustomMainGenre">
-                <option value="">All Main Genres</option>
-              </select>
+              <label for="selectCustomMainGenre">Main Genre</label>
+              <select id="selectCustomMainGenre"><option value="">All Main Genres</option></select>
             </div>
             <div class="form-group">
-              <label for="selectCustomSubGenre">Filter by Sub-genre</label>
-              <select id="selectCustomSubGenre">
-                <option value="">All Sub-genres</option>
-              </select>
+              <label for="selectCustomSubGenre">Sub-genre</label>
+              <select id="selectCustomSubGenre"><option value="">All Sub-genres</option></select>
             </div>
           </div>
-
           <div class="form-group">
-            <label for="inputCustomVibeQuery">Filter by Vibe / Mood Keyword</label>
-            <input type="text" id="inputCustomVibeQuery" placeholder="e.g. Dark, Chill, Atmospheric, Melodic, Aggressive, Euphoric...">
+            <label for="inputCustomVibeQuery">Vibe / Keyword</label>
+            <input type="text" id="inputCustomVibeQuery" placeholder="e.g. Analog, Warm, Heavy, Chill...">
           </div>
-
           <div class="custom-matched-header">
-            <h4>Matched Songs Preview (<span id="customMatchedCount" style="color: var(--accent-cyan);">0</span> songs)</h4>
+            <h4>Matched Songs (<span id="customMatchedCount" style="color: var(--accent-red);">0</span>)</h4>
           </div>
-
-          <div class="custom-matched-list" id="customMatchedList" style="max-height: 220px; overflow-y: auto; background: rgba(0,0,0,0.3); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 10px;">
-          </div>
+          <div class="custom-matched-list" id="customMatchedList" style="max-height: 200px; overflow-y: auto; background: #ded8cc; border-radius: var(--radius-sm); padding: 10px;"></div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-ghost" data-close="customPlaylistModal">Cancel</button>
-          <button id="btnCreateCustomPlaylist" class="btn btn-gradient">
+          <button class="btn-sleeve-ghost" data-close="customPlaylistModal">Cancel</button>
+          <button id="btnCreateCustomPlaylist" class="btn-analog-dark">
             <span class="spinner hidden" id="customPlaylistSpinner"></span>
-            <span>💾 Save to Web & Export to YouTube</span>
+            <span>💾 Save & Export</span>
           </button>
         </div>
       </div>

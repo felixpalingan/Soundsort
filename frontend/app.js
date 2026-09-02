@@ -56,6 +56,19 @@ const elements = {
   tabCountPlaylists: document.getElementById('tabCountPlaylists'),
   tabCountLocal: document.getElementById('tabCountLocal'),
 
+  // Vinyl Deck Elements
+  turntableDisc: document.getElementById('turntableDisc'),
+  turntableTonearm: document.getElementById('turntableTonearm'),
+  vinylCenterArt: document.getElementById('vinylCenterArt'),
+  activePlayingGenre: document.getElementById('activePlayingGenre'),
+  activePlayingTitle: document.getElementById('activePlayingTitle'),
+  activePlayingArtist: document.getElementById('activePlayingArtist'),
+  deckPlayerTitle: document.getElementById('deckPlayerTitle'),
+  deckPlayerArtist: document.getElementById('deckPlayerArtist'),
+  btnPlayerPlayToggle: document.getElementById('btnPlayerPlayToggle'),
+  playIconSvg: document.getElementById('playIconSvg'),
+  waveformVisualizer: document.getElementById('waveformVisualizer'),
+
   // Status Chips & Counters
   geminiStatusChip: document.getElementById('geminiStatusChip'),
   ytStatusChip: document.getElementById('ytStatusChip'),
@@ -1145,6 +1158,58 @@ function renderStudioContent() {
   }
 }
 
+let isVinylPlaying = false;
+let currentCuedTrack = null;
+
+function cueTrackOnVinyl(trackId) {
+  const tr = state.allTracks.find(t => t.id === trackId);
+  if (!tr) return;
+  currentCuedTrack = tr;
+
+  if (elements.activePlayingTitle) elements.activePlayingTitle.textContent = tr.title;
+  if (elements.activePlayingArtist) elements.activePlayingArtist.textContent = tr.artist;
+  if (elements.activePlayingGenre) elements.activePlayingGenre.textContent = tr.sub_genre || tr.main_genre || 'Vinyl Track';
+
+  if (elements.deckPlayerTitle) elements.deckPlayerTitle.textContent = tr.title;
+  if (elements.deckPlayerArtist) elements.deckPlayerArtist.textContent = tr.artist;
+
+  if (elements.vinylCenterArt && tr.thumbnail) {
+    elements.vinylCenterArt.style.backgroundImage = `url('${getSafeThumb(tr.thumbnail)}')`;
+  }
+
+  startVinylSpin();
+}
+
+function startVinylSpin() {
+  isVinylPlaying = true;
+  if (elements.turntableDisc) elements.turntableDisc.classList.add('spinning');
+  if (elements.turntableTonearm) elements.turntableTonearm.classList.add('engaged');
+  if (elements.playIconSvg) {
+    elements.playIconSvg.innerHTML = `<rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect>`;
+  }
+}
+
+function stopVinylSpin() {
+  isVinylPlaying = false;
+  if (elements.turntableDisc) elements.turntableDisc.classList.remove('spinning');
+  if (elements.turntableTonearm) elements.turntableTonearm.classList.remove('engaged');
+  if (elements.playIconSvg) {
+    elements.playIconSvg.innerHTML = `<polygon points="5 3 19 12 5 21 5 3"></polygon>`;
+  }
+}
+
+function toggleVinylPlayback() {
+  if (isVinylPlaying) {
+    stopVinylSpin();
+  } else {
+    if (!currentCuedTrack && state.tracks.length > 0) {
+      cueTrackOnVinyl(state.tracks[0].id);
+    } else {
+      startVinylSpin();
+    }
+  }
+}
+
 function renderGroupedGridView(container) {
   const groups = {};
   state.tracks.forEach(t => {
@@ -1175,21 +1240,22 @@ function renderGroupedGridView(container) {
           <span class="badge badge-subgenre">${list.length} tracks</span>
         </div>
         <div class="group-actions">
-          <button class="btn btn-secondary btn-xs" onclick="quickCreatePlaylistForGenre('${escapeHtml(genreName)}')">
-            ➕ Create Playlist
+          <button class="btn-sleeve-btn btn-sm" onclick="quickCreatePlaylistForGenre('${escapeHtml(genreName)}')">
+            ➕ Playlist
           </button>
         </div>
       </div>
       <div class="group-card-tracks">
-        ${list.map(t => `
-          <div class="track-row-compact">
-            <input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')">
+        ${list.map((t, idx) => `
+          <div class="track-row-compact" onclick="cueTrackOnVinyl('${t.id}')" style="cursor: pointer;">
+            <input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleTrackSelection('${t.id}')">
+            <span style="font-family: var(--font-brand); font-weight: 800; font-size: 0.75rem; color: var(--sleeve-text-muted); width: 18px;">${String(idx + 1).padStart(2, '0')}</span>
             <img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover">
             <div class="track-info-mini">
               <span class="track-title-mini" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</span>
               <span class="track-artist-mini" title="${escapeHtml(t.artist)}">${escapeHtml(t.artist)}</span>
             </div>
-            <div style="display: flex; gap: 4px; align-items: center;">
+            <div style="display: flex; gap: 4px; align-items: center;" onclick="event.stopPropagation();">
               ${t.is_local 
                 ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>
                    <button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
@@ -1217,7 +1283,8 @@ function renderTableView(container) {
         <thead>
           <tr>
             <th width="40"><input type="checkbox" id="chkSelectAllTable" onchange="toggleSelectAllTable(this)"></th>
-            <th width="60">Cover</th>
+            <th width="30">#</th>
+            <th width="50">Cover</th>
             <th>Title & Artist</th>
             <th>Source</th>
             <th>Main Genre</th>
@@ -1227,23 +1294,24 @@ function renderTableView(container) {
           </tr>
         </thead>
         <tbody>
-          ${state.tracks.map(t => `
-            <tr>
-              <td><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
+          ${state.tracks.map((t, idx) => `
+            <tr onclick="cueTrackOnVinyl('${t.id}')" style="cursor: pointer;">
+              <td onclick="event.stopPropagation();"><input type="checkbox" class="track-select-checkbox" data-track-id="${t.id}" ${state.selectedTrackIds.has(t.id) ? 'checked' : ''} onchange="toggleTrackSelection('${t.id}')"></td>
+              <td style="font-family: var(--font-brand); font-weight: 800; font-size: 0.75rem; color: var(--sleeve-text-muted);">${String(idx + 1).padStart(2, '0')}</td>
               <td><img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover"></td>
               <td>
-                <div class="table-track-title">${escapeHtml(t.title)}</div>
-                <div class="table-track-artist">${escapeHtml(t.artist)}</div>
+                <div class="table-track-title" style="font-weight: 700;">${escapeHtml(t.title)}</div>
+                <div class="table-track-artist" style="color: var(--sleeve-text-muted); font-size: 0.75rem;">${escapeHtml(t.artist)}</div>
               </td>
               <td>
                 ${t.is_local 
                   ? `<span class="badge badge-local" title="${escapeHtml(t.file_path || '')}">💾 Local</span>` 
                   : `<span class="badge badge-online">🌐 Online</span>`}
               </td>
-              <td><span class="badge badge-main-genre">${escapeHtml(t.main_genre || 'Other')}</span></td>
-              <td><span class="badge badge-subgenre">${escapeHtml(t.sub_genre || 'General')}</span></td>
-              <td><span class="vibe-tag">${escapeHtml(t.vibe || '-')}</span></td>
-              <td>
+              <td><span class="badge badge-subgenre">${escapeHtml(t.main_genre || 'Other')}</span></td>
+              <td><span class="badge badge-subgenre" style="background: #ffffff; border: 1px solid var(--sleeve-border);">${escapeHtml(t.sub_genre || 'General')}</span></td>
+              <td><span style="font-size: 0.75rem; color: var(--sleeve-text-secondary);">${escapeHtml(t.vibe || '-')}</span></td>
+              <td onclick="event.stopPropagation();">
                 <div style="display: flex; gap: 6px; align-items: center;">
                   ${t.is_local 
                     ? `<button class="btn-tag-track" onclick="handleTagSingleTrack('${t.id}')" title="Write ID3 tags">🏷️ Tag</button>` 
@@ -1603,6 +1671,11 @@ function setupEventListeners() {
       exportPlaylistToYT(state.currentInspectingPlaylist.id, elements.btnInspectorExportYT);
     }
   });
+
+  // Vinyl Deck Controls
+  if (elements.btnPlayerPlayToggle) {
+    elements.btnPlayerPlayToggle.addEventListener('click', toggleVinylPlayback);
+  }
 
   // Settings
   elements.btnOpenSettings.addEventListener('click', () => openModal(elements.settingsModal));

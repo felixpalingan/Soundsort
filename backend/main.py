@@ -1099,27 +1099,54 @@ def api_get_lyrics(title: str, artist: Optional[str] = ""):
     }
 
 @app.get("/api/player/stream/{track_id}")
-def api_stream_local_audio(track_id: str):
+def api_stream_audio(track_id: str):
     """
-    Stream audio file content if track is stored locally.
+    Stream audio file content:
+    - If local file exists, stream directly from disk with FileResponse.
+    - If online track, fetch instant high-fidelity audio stream preview.
     """
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, RedirectResponse
     all_tracks = get_all_tracks()
     tr = next((t for t in all_tracks if t.id == track_id), None)
-    if not tr or not tr.is_local or not tr.file_path or not os.path.exists(tr.file_path):
-        raise HTTPException(status_code=404, detail="Audio file not available locally on disk.")
+    if not tr:
+        raise HTTPException(status_code=404, detail="Track not found")
 
-    media_type = "audio/mpeg"
-    if tr.file_path.endswith(".flac"):
-        media_type = "audio/flac"
-    elif tr.file_path.endswith(".m4a") or tr.file_path.endswith(".mp4"):
-        media_type = "audio/mp4"
-    elif tr.file_path.endswith(".ogg") or tr.file_path.endswith(".opus"):
-        media_type = "audio/ogg"
-    elif tr.file_path.endswith(".wav"):
-        media_type = "audio/wav"
+    # 1. Local file streaming
+    if tr.is_local and tr.file_path and os.path.exists(tr.file_path):
+        media_type = "audio/mpeg"
+        if tr.file_path.endswith(".flac"):
+            media_type = "audio/flac"
+        elif tr.file_path.endswith(".m4a") or tr.file_path.endswith(".mp4"):
+            media_type = "audio/mp4"
+        elif tr.file_path.endswith(".ogg") or tr.file_path.endswith(".opus"):
+            media_type = "audio/ogg"
+        elif tr.file_path.endswith(".wav"):
+            media_type = "audio/wav"
 
-    return FileResponse(tr.file_path, media_type=media_type, filename=os.path.basename(tr.file_path))
+        return FileResponse(tr.file_path, media_type=media_type, filename=os.path.basename(tr.file_path))
+
+    # 2. Online Track Instant Audio Stream
+    import urllib.request
+    import urllib.parse
+    import json
+
+    search_query = f"{tr.artist} {tr.title}".strip()
+    encoded_q = urllib.parse.quote(search_query)
+    itunes_url = f"https://itunes.apple.com/search?term={encoded_q}&media=music&entity=song&limit=1"
+
+    try:
+        req = urllib.request.Request(itunes_url, headers={"User-Agent": "SoundSort-AI/1.0"})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode())
+                results = data.get("results", [])
+                if results and results[0].get("previewUrl"):
+                    preview_url = results[0]["previewUrl"]
+                    return RedirectResponse(url=preview_url, status_code=302)
+    except Exception as e:
+        logger.warning(f"Failed fetching online audio stream for {search_query}: {e}")
+
+    raise HTTPException(status_code=404, detail="Audio stream not available for this track.")
 
 
 # Mount Frontend static files

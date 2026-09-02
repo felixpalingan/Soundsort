@@ -402,9 +402,10 @@ function cueTrackOnVinyl(trackId) {
     elements.vinylCenterArt.style.backgroundImage = `url('${getSafeThumb(tr.thumbnail)}')`;
   }
 
-  // If local track, configure audio stream
-  if (tr.is_local && elements.nativeAudioPlayer) {
+  // Configure audio stream for both local files and online streams
+  if (elements.nativeAudioPlayer) {
     elements.nativeAudioPlayer.src = `${API_BASE}/player/stream/${tr.id}`;
+    elements.nativeAudioPlayer.volume = state.volumePercent / 100;
     elements.nativeAudioPlayer.load();
   }
 
@@ -426,18 +427,27 @@ function startVinylSpin() {
   if (elements.playIconSvg) elements.playIconSvg.innerHTML = pauseSvg;
   if (elements.grandPlaySvg) elements.grandPlaySvg.innerHTML = pauseSvg;
 
-  if (state.currentCuedTrack?.is_local && elements.nativeAudioPlayer) {
-    elements.nativeAudioPlayer.play().catch(e => console.log('Audio autoplay prevented:', e));
+  if (elements.nativeAudioPlayer) {
+    elements.nativeAudioPlayer.play().catch(e => {
+      console.log('Audio autoplay info:', e);
+      showToast('Click anywhere on the player to enable audio playback', 'info');
+    });
   }
 
   // Start progress clock
   if (state.playbackTimer) clearInterval(state.playbackTimer);
   state.playbackTimer = setInterval(() => {
-    if (state.currentTime < state.duration) {
-      state.currentTime += 1;
+    if (elements.nativeAudioPlayer && !elements.nativeAudioPlayer.paused && elements.nativeAudioPlayer.duration) {
+      state.currentTime = Math.floor(elements.nativeAudioPlayer.currentTime);
+      state.duration = Math.floor(elements.nativeAudioPlayer.duration);
       updatePlaybackPosition();
     } else {
-      playNextTrack();
+      if (state.currentTime < state.duration) {
+        state.currentTime += 1;
+        updatePlaybackPosition();
+      } else {
+        playNextTrack();
+      }
     }
   }, 1000);
 }

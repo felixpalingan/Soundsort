@@ -1223,11 +1223,18 @@ body.vinyl-theme {
   background: var(--sleeve-surface);
   border: 1px solid var(--sleeve-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   box-shadow: var(--shadow-stage);
+  transition: transform var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.playlist-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--sleeve-border-strong);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
 }
 
 .playlist-card-title {

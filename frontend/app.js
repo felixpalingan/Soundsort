@@ -1973,6 +1973,37 @@ function setupEventListeners() {
   if (elements.navTabDownloader) elements.navTabDownloader.addEventListener('click', () => switchModule('downloader'));
   if (elements.navTabPlaylists) elements.navTabPlaylists.addEventListener('click', () => switchModule('playlists'));
 
+  // Native HTML5 Audio Player Listeners & Error Handler
+  if (elements.nativeAudioPlayer) {
+    elements.nativeAudioPlayer.addEventListener('timeupdate', () => {
+      if (elements.nativeAudioPlayer.duration) {
+        state.currentTime = Math.floor(elements.nativeAudioPlayer.currentTime);
+        state.duration = Math.floor(elements.nativeAudioPlayer.duration);
+        updatePlaybackPosition();
+      }
+    });
+
+    elements.nativeAudioPlayer.addEventListener('ended', () => {
+      playNextTrack();
+    });
+
+    elements.nativeAudioPlayer.addEventListener('error', (e) => {
+      console.warn('Native audio playback error:', elements.nativeAudioPlayer.error);
+    });
+
+    elements.nativeAudioPlayer.addEventListener('playing', () => {
+      if (!state.isVinylPlaying) {
+        startVinylSpin();
+      }
+    });
+
+    elements.nativeAudioPlayer.addEventListener('pause', () => {
+      if (state.isVinylPlaying && elements.nativeAudioPlayer.currentTime < (elements.nativeAudioPlayer.duration || 228)) {
+        // Only stop if user explicitly paused
+      }
+    });
+  }
+
   // Player & Synced Lyrics Controls
   if (elements.btnGrandPlayToggle) elements.btnGrandPlayToggle.addEventListener('click', toggleVinylPlayback);
   if (elements.btnPlayerPlayToggle) elements.btnPlayerPlayToggle.addEventListener('click', toggleVinylPlayback);

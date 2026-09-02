@@ -1123,7 +1123,16 @@ def api_stream_audio(track_id: str):
         elif tr.file_path.endswith(".wav"):
             media_type = "audio/wav"
 
-        return FileResponse(tr.file_path, media_type=media_type, filename=os.path.basename(tr.file_path))
+        return FileResponse(
+            tr.file_path,
+            media_type=media_type,
+            filename=os.path.basename(tr.file_path),
+            headers={
+                "Accept-Ranges": "bytes",
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "no-cache"
+            }
+        )
 
     # 2. Online Track Instant Audio Stream Proxy
     import urllib.request

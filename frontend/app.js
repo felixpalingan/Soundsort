@@ -2092,6 +2092,14 @@ function setupEventListeners() {
 
   // Downloader Module Actions (Module 4)
   if (elements.btnTriggerQuickDownload) elements.btnTriggerQuickDownload.addEventListener('click', handleQuickDownloadFromInput);
+  if (elements.inputSingleDownloadUrl) {
+    elements.inputSingleDownloadUrl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleQuickDownloadFromInput();
+      }
+    });
+  }
 
   // Playlists Studio Buttons (Module 5)
   if (elements.btnOpenCreatePlaylistModal) elements.btnOpenCreatePlaylistModal.addEventListener('click', openCreatePlaylistModal);

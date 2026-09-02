@@ -238,6 +238,10 @@ const elements = {
   btnCreateCustomPlaylist: document.getElementById('btnCreateCustomPlaylist'),
   customPlaylistSpinner: document.getElementById('customPlaylistSpinner'),
 
+  queueDrawerModal: document.getElementById('queueDrawerModal'),
+  queueTrackCount: document.getElementById('queueTrackCount'),
+  queueTracksList: document.getElementById('queueTracksList'),
+
   toastContainer: document.getElementById('toastContainer')
 };
 
@@ -1460,6 +1464,39 @@ function updateCheckboxesState() {
   });
 }
 
+function openQueueDrawerModal() {
+  const container = elements.queueTracksList;
+  if (!container) return;
+
+  const queue = state.allTracks || [];
+  if (elements.queueTrackCount) elements.queueTrackCount.textContent = `${queue.length} tracks`;
+
+  if (queue.length === 0) {
+    container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--sleeve-text-muted);">No tracks in queue. Ingest tracks in the AI Analyzer first!</div>`;
+  } else {
+    container.innerHTML = queue.map((t, idx) => {
+      const isCurrent = state.currentCuedTrack && state.currentCuedTrack.id === t.id;
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: ${isCurrent ? '#ffffff' : 'transparent'}; border-radius: var(--radius-sm); border: 1px solid ${isCurrent ? 'var(--accent-red)' : 'var(--sleeve-border)'}; cursor: pointer;" onclick="cueTrackOnVinyl('${t.id}'); closeModal(elements.queueDrawerModal);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-family: var(--font-brand); font-weight: 800; font-size: 0.8rem; color: ${isCurrent ? 'var(--accent-red)' : 'var(--sleeve-text-muted)'}; width: 22px;">${isCurrent ? '▶' : String(idx + 1).padStart(2, '0')}</span>
+            <img class="track-thumb-mini" src="${getSafeThumb(t.thumbnail)}" alt="cover">
+            <div>
+              <div style="font-weight: 700; font-size: 0.85rem; color: var(--sleeve-text);">${escapeHtml(t.title)}</div>
+              <div style="font-size: 0.75rem; color: var(--sleeve-text-muted);">${escapeHtml(t.artist)}</div>
+            </div>
+          </div>
+          <div>
+            <span class="badge badge-subgenre">${escapeHtml(t.sub_genre || t.main_genre || 'General')}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  openModal(elements.queueDrawerModal);
+}
+
 function openAddToPlaylistModal(specificTrackId = null) {
   const tids = specificTrackId ? [specificTrackId] : Array.from(state.selectedTrackIds);
   if (tids.length === 0) {
@@ -1931,6 +1968,36 @@ function setupEventListeners() {
   if (elements.btnRefreshLyrics) {
     elements.btnRefreshLyrics.addEventListener('click', () => {
       if (state.currentCuedTrack) fetchAndRenderLyrics(state.currentCuedTrack.title, state.currentCuedTrack.artist);
+    });
+  }
+
+  // Poster Top Action Buttons
+  if (elements.btnToggleLikeCurrent) {
+    elements.btnToggleLikeCurrent.addEventListener('click', () => {
+      if (!state.currentCuedTrack) {
+        showToast('No track is currently playing', 'error');
+        return;
+      }
+      state.currentCuedTrack._isLiked = !state.currentCuedTrack._isLiked;
+      const isLiked = state.currentCuedTrack._isLiked;
+      elements.btnToggleLikeCurrent.style.color = isLiked ? 'var(--accent-red)' : 'var(--sleeve-text)';
+      showToast(isLiked ? `Added "${state.currentCuedTrack.title}" to Favorites ❤️` : `Removed from Favorites`, 'info');
+    });
+  }
+
+  if (elements.btnQuickAddToQueue) {
+    elements.btnQuickAddToQueue.addEventListener('click', () => {
+      if (!state.currentCuedTrack) {
+        showToast('No track is currently playing', 'error');
+        return;
+      }
+      openAddToPlaylistModal(state.currentCuedTrack.id);
+    });
+  }
+
+  if (elements.btnOpenQueueDrawer) {
+    elements.btnOpenQueueDrawer.addEventListener('click', () => {
+      openQueueDrawerModal();
     });
   }
 

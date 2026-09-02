@@ -739,6 +739,26 @@ Kordhell - Murder In My Mind" rows="3"></textarea>
       </div>
     </div>
 
+    <!-- Modal: Now Playing Queue Drawer -->
+    <div class="modal-backdrop hidden" id="queueDrawerModal">
+      <div class="modal-dialog vinyl-modal modal-lg">
+        <div class="modal-header">
+          <div class="inspector-title-group">
+            <h3>📑 Now Playing Track Queue</h3>
+            <span class="badge badge-subgenre" id="queueTrackCount">0 tracks</span>
+          </div>
+          <button class="modal-close" data-close="queueDrawerModal" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="section-desc">Click any track to immediately cue and spin on the Vinyl Turntable deck:</p>
+          <div class="queue-tracks-list" id="queueTracksList" style="max-height: 360px; overflow-y: auto; margin-top: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-sleeve-ghost" data-close="queueDrawerModal">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="toast-container"></div>
 

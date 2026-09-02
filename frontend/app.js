@@ -1991,6 +1991,22 @@ function setupEventListeners() {
 
   // Importer & AI Classifier (Module 2)
   if (elements.btnImport) elements.btnImport.addEventListener('click', handleImportText);
+  if (elements.importInput) {
+    elements.importInput.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      elements.importInput.classList.add('drag-over');
+    });
+    elements.importInput.addEventListener('dragleave', () => {
+      elements.importInput.classList.remove('drag-over');
+    });
+    elements.importInput.addEventListener('drop', (e) => {
+      e.preventDefault();
+      elements.importInput.classList.remove('drag-over');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+  }
   if (elements.btnUploadCsv && elements.fileUploadInput) {
     elements.btnUploadCsv.addEventListener('click', () => elements.fileUploadInput.click());
     elements.fileUploadInput.addEventListener('change', (e) => {

@@ -870,13 +870,20 @@ body.vinyl-theme {
 .importer-deck-box textarea {
   width: 100%;
   background: #ffffff;
-  border: 1px solid var(--sleeve-border);
+  border: 1.5px dashed var(--sleeve-border-strong);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 14px 16px;
   font-family: var(--font-body);
   font-size: 0.85rem;
   color: var(--sleeve-text);
   resize: vertical;
+  transition: all var(--transition-fast);
+}
+
+.importer-deck-box textarea:focus, .importer-deck-box textarea.drag-over {
+  border-color: var(--accent-red);
+  background: #fffdfa;
+  box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
 }
 
 .importer-deck-footer {
